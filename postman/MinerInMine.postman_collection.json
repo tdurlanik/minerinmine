@@ -1,0 +1,209 @@
+{
+  "info": {
+    "_postman_id": "b7a1c2d3-4e5f-4a6b-9c8d-1e2f3a4b5c6d",
+    "name": "MinerInMine API",
+    "description": "MinerInMine kimlik dogrulama API'si.\n\nKULLANIM:\n1. Sag ustten 'MinerInMine - Local' environment'ini secin.\n2. Register veya Login isteklerini calistirin -> token'lar OTOMATIK olarak environment'a yazilir.\n3. Artik korumali istekleri (Me, Admin Only) dogrudan calistirabilirsiniz.",
+    "schema": "https://schema.getpostman.com/json/collection/v2.1.0/collection.json"
+  },
+  "auth": {
+    "type": "bearer",
+    "bearer": [
+      { "key": "token", "value": "{{accessToken}}", "type": "string" }
+    ]
+  },
+  "item": [
+    {
+      "name": "1. Register",
+      "event": [
+        {
+          "listen": "test",
+          "script": {
+            "type": "text/javascript",
+            "exec": [
+              "// Postman Test Script: istek TAMAMLANDIKTAN sonra calisir.",
+              "// Amac: token'i elle kopyalayip yapistirmaktan kurtulmak.",
+              "pm.test('Durum kodu 200', function () {",
+              "    pm.response.to.have.status(200);",
+              "});",
+              "",
+              "if (pm.response.code === 200) {",
+              "    const data = pm.response.json();",
+              "    // Environment degiskenlerini doldur -> diger istekler {{accessToken}} ile bunu kullanir.",
+              "    pm.environment.set('accessToken', data.accessToken);",
+              "    pm.environment.set('refreshToken', data.refreshToken);",
+              "    pm.environment.set('username', data.username);",
+              "    console.log('Token kaydedildi. Kullanici:', data.username, '| Roller:', data.roles);",
+              "}"
+            ]
+          }
+        },
+        {
+          "listen": "prerequest",
+          "script": {
+            "type": "text/javascript",
+            "exec": [
+              "// Her calistirmada benzersiz bir kullanici adi uret ki",
+              "// 'Bu kullanici adi zaten kullanilmaktadir' hatasi almayalim.",
+              "const rastgele = Math.floor(Math.random() * 100000);",
+              "pm.variables.set('yeniKullanici', 'madenci_' + rastgele);"
+            ]
+          }
+        }
+      ],
+      "request": {
+        "auth": { "type": "noauth" },
+        "method": "POST",
+        "header": [{ "key": "Content-Type", "value": "application/json" }],
+        "body": {
+          "mode": "raw",
+          "raw": "{\n  \"username\": \"{{yeniKullanici}}\",\n  \"email\": \"{{yeniKullanici}}@minerinmine.com\",\n  \"password\": \"Sifre123\"\n}"
+        },
+        "url": {
+          "raw": "{{baseUrl}}/api/auth/register",
+          "host": ["{{baseUrl}}"],
+          "path": ["api", "auth", "register"]
+        },
+        "description": "Yeni kullanici olusturur. sp_RegisterUser transaction icinde Users + UserRoles + PlayerProfiles kayitlarini birlikte yazar. Basarili olursa otomatik giris yapilir ve token doner."
+      }
+    },
+    {
+      "name": "2. Login",
+      "event": [
+        {
+          "listen": "test",
+          "script": {
+            "type": "text/javascript",
+            "exec": [
+              "pm.test('Durum kodu 200', function () {",
+              "    pm.response.to.have.status(200);",
+              "});",
+              "",
+              "pm.test('accessToken dondu', function () {",
+              "    pm.expect(pm.response.json()).to.have.property('accessToken');",
+              "});",
+              "",
+              "if (pm.response.code === 200) {",
+              "    const data = pm.response.json();",
+              "    pm.environment.set('accessToken', data.accessToken);",
+              "    pm.environment.set('refreshToken', data.refreshToken);",
+              "}"
+            ]
+          }
+        }
+      ],
+      "request": {
+        "auth": { "type": "noauth" },
+        "method": "POST",
+        "header": [{ "key": "Content-Type", "value": "application/json" }],
+        "body": {
+          "mode": "raw",
+          "raw": "{\n  \"loginInput\": \"{{username}}\",\n  \"password\": \"Sifre123\"\n}"
+        },
+        "url": {
+          "raw": "{{baseUrl}}/api/auth/login",
+          "host": ["{{baseUrl}}"],
+          "path": ["api", "auth", "login"]
+        },
+        "description": "loginInput alanina kullanici adi VEYA e-posta yazabilirsiniz; sp_GetUserByLogin ikisini de arar.\n\nYanlis sifre denerseniz 401 alirsiniz ve mesaj her durumda ayni olur - hangi bilginin yanlis oldugunu sizdirmamak icin (user enumeration korumasi)."
+      }
+    },
+    {
+      "name": "3. Me (korumali)",
+      "event": [
+        {
+          "listen": "test",
+          "script": {
+            "type": "text/javascript",
+            "exec": [
+              "pm.test('Durum kodu 200', function () {",
+              "    pm.response.to.have.status(200);",
+              "});"
+            ]
+          }
+        }
+      ],
+      "request": {
+        "method": "GET",
+        "header": [],
+        "url": {
+          "raw": "{{baseUrl}}/api/users/me",
+          "host": ["{{baseUrl}}"],
+          "path": ["api", "users", "me"]
+        },
+        "description": "[Authorize] ile korunur. Koleksiyon seviyesindeki Bearer auth sayesinde {{accessToken}} otomatik eklenir.\n\nDENEYIN: Authorization header'ini kaldirin -> 401 alirsiniz.\nDENEYIN: Token'in sonuna rastgele karakter ekleyin -> imza tutmaz, yine 401."
+      }
+    },
+    {
+      "name": "4. Admin Only (rol kontrolu)",
+      "request": {
+        "method": "GET",
+        "header": [],
+        "url": {
+          "raw": "{{baseUrl}}/api/users/admin-only",
+          "host": ["{{baseUrl}}"],
+          "path": ["api", "users", "admin-only"]
+        },
+        "description": "[Authorize(Roles = \"Admin\")] ile korunur.\n\nYeni kayit olan herkes 'Player' rolu aldigi icin BURADA 403 ALMANIZ NORMALDIR.\n401 vs 403 farki:\n  401 Unauthorized = kim oldugunu bilmiyorum (token yok/gecersiz)\n  403 Forbidden    = kim oldugunu biliyorum ama bu isi yapmaya yetkin yok\n\n200 gormek isterseniz veritabaninda kullaniciya Admin rolu verip TEKRAR login olun (roller token uretilirken okunur, eski token degismez)."
+      }
+    },
+    {
+      "name": "5. Refresh Token",
+      "event": [
+        {
+          "listen": "test",
+          "script": {
+            "type": "text/javascript",
+            "exec": [
+              "pm.test('Durum kodu 200', function () {",
+              "    pm.response.to.have.status(200);",
+              "});",
+              "",
+              "if (pm.response.code === 200) {",
+              "    const data = pm.response.json();",
+              "    pm.environment.set('accessToken', data.accessToken);",
+              "    pm.environment.set('refreshToken', data.refreshToken);",
+              "    console.log('Token yenilendi (rotation): eski refresh token artik gecersiz.');",
+              "}"
+            ]
+          }
+        }
+      ],
+      "request": {
+        "auth": { "type": "noauth" },
+        "method": "POST",
+        "header": [{ "key": "Content-Type", "value": "application/json" }],
+        "body": {
+          "mode": "raw",
+          "raw": "{\n  \"refreshToken\": \"{{refreshToken}}\"\n}"
+        },
+        "url": {
+          "raw": "{{baseUrl}}/api/auth/refresh-token",
+          "host": ["{{baseUrl}}"],
+          "path": ["api", "auth", "refresh-token"]
+        },
+        "description": "Access token 15 dakikada olur. Bu uc, sifre sormadan yeni bir access token verir.\n\nTOKEN ROTATION: Kullanilan refresh token ANINDA iptal edilir ve yenisi verilir.\nDENEYIN: Bu istegi calistirdiktan sonra, Postman console'dan eski refresh token'i alip tekrar gonderin -> 'Bu refresh token iptal edilmis' hatasi alirsiniz. Bu, calinmis token'lari tespit etmenin yoludur."
+      }
+    },
+    {
+      "name": "6. Revoke Token (Logout)",
+      "request": {
+        "auth": { "type": "noauth" },
+        "method": "POST",
+        "header": [{ "key": "Content-Type", "value": "application/json" }],
+        "body": {
+          "mode": "raw",
+          "raw": "{\n  \"refreshToken\": \"{{refreshToken}}\"\n}"
+        },
+        "url": {
+          "raw": "{{baseUrl}}/api/auth/revoke-token",
+          "host": ["{{baseUrl}}"],
+          "path": ["api", "auth", "revoke-token"]
+        },
+        "description": "Cikis islemi: refresh token veritabaninda iptal edilir (RevokedAt dolar).\n\nDIKKAT: Access token stateless oldugu icin sunucu tarafinda iptal EDILEMEZ; suresi dolana kadar (en fazla 15 dk) gecerli kalir. Bu yuzden access token omrunu kisa tutuyoruz."
+      }
+    }
+  ],
+  "variable": [
+    { "key": "baseUrl", "value": "http://localhost:5080" }
+  ]
+}
