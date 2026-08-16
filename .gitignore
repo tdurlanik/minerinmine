@@ -4,18 +4,36 @@ Desktop.ini
 .DS_Store
 
 # IDE & Editors
-.vscode/
+.vs/
 .idea/
 *.suo
 *.user
+*.userosscache
+*.sln.docstates
 
-# Dependencies & Build artifacts (hazır şablonlar)
+# VS Code: kisisel ayarlar haric tutulur, ama projeye ait olan
+# hata ayiklama yapilandirmasi ve eklenti onerileri paylasilir.
+#
+# NOT: Basinda "**/" olmasi sart. Icinde slash bulunan bir kalip (.vscode/*)
+# git tarafindan SADECE .gitignore'un bulundugu klasore sabitlenir; alt
+# klasorlerdeki .vscode dizinlerini yakalamaz.
+**/.vscode/*
+!**/.vscode/extensions.json
+!**/.vscode/launch.json
+!**/.vscode/tasks.json
+
+# Dependencies & Build artifacts
 node_modules/
 dist/
 build/
 bin/
 obj/
+.angular/
 __pycache__/
 *.pyc
+
+# Secrets
 .env
 .env.local
+appsettings.Production.json
+appsettings.*.Local.json
