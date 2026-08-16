@@ -1,0 +1,30 @@
+/* Login sayfasına özel stiller.
+   Ortak kart/form/buton stilleri global styles.css içinde tanımlıdır;
+   burada sadece bu sayfaya has küçük dokunuşlar yer alır.
+
+   NOT: Angular bileşen stilleri VARSAYILAN OLARAK KAPSAMLIDIR (scoped).
+   Buraya yazdığımız bir kural, derleme sırasında eklenen benzersiz bir
+   özniteliğe bağlandığı için diğer bileşenleri ETKİLEMEZ. */
+
+.mim-kart {
+  /* Karta üstten aşağı doğru hafif bir "yükselme" animasyonu */
+  animation: yukari-kay 320ms ease-out;
+}
+
+@keyframes yukari-kay {
+  from {
+    opacity: 0;
+    transform: translateY(12px);
+  }
+  to {
+    opacity: 1;
+    transform: translateY(0);
+  }
+}
+
+/* Hareket hassasiyeti olan kullanıcılar için animasyonu kapat (erişilebilirlik). */
+@media (prefers-reduced-motion: reduce) {
+  .mim-kart {
+    animation: none;
+  }
+}

@@ -1,0 +1,129 @@
+<div class="mim-sayfa">
+  <div class="mim-kart">
+
+    <div class="mim-marka">
+      <span class="mim-marka__ikon">⛰️</span>
+      <h1 class="mim-marka__ad">MinerInMine</h1>
+      <p class="mim-marka__alt">Ocağa katıl, ilk kazmanı eline al</p>
+    </div>
+
+    @if (hataMesaji()) {
+      <div class="mim-uyari">
+        <span>⚠️</span>
+        <span>{{ hataMesaji() }}</span>
+      </div>
+    }
+
+    <form [formGroup]="form" (ngSubmit)="gonder()" novalidate>
+      <fieldset class="mim-fieldset" [disabled]="yukleniyor()">
+
+        <div class="mim-alan">
+          <label class="mim-etiket" for="username">Kullanıcı Adı</label>
+          <input
+            id="username"
+            type="text"
+            class="mim-input"
+            formControlName="username"
+            placeholder="madenci_01"
+            autocomplete="username"
+            [class.mim-input--hatali]="username.invalid && username.touched" />
+
+          @if (username.invalid && username.touched) {
+            <div class="mim-hata">
+              @if (username.errors?.['required']) {
+                Kullanıcı adı zorunludur.
+              } @else if (username.errors?.['minlength']) {
+                Kullanıcı adı en az 3 karakter olmalıdır.
+              } @else if (username.errors?.['maxlength']) {
+                Kullanıcı adı en fazla 50 karakter olabilir.
+              }
+            </div>
+          }
+        </div>
+
+        <div class="mim-alan">
+          <label class="mim-etiket" for="email">E-posta</label>
+          <input
+            id="email"
+            type="email"
+            class="mim-input"
+            formControlName="email"
+            placeholder="madenci@ornek.com"
+            autocomplete="email"
+            [class.mim-input--hatali]="email.invalid && email.touched" />
+
+          @if (email.invalid && email.touched) {
+            <div class="mim-hata">
+              @if (email.errors?.['required']) {
+                E-posta zorunludur.
+              } @else if (email.errors?.['email']) {
+                Geçerli bir e-posta adresi giriniz.
+              }
+            </div>
+          }
+        </div>
+
+        <div class="mim-alan">
+          <label class="mim-etiket" for="password">Şifre</label>
+          <input
+            id="password"
+            type="password"
+            class="mim-input"
+            formControlName="password"
+            placeholder="En az 6 karakter"
+            autocomplete="new-password"
+            [class.mim-input--hatali]="password.invalid && password.touched" />
+
+          @if (password.invalid && password.touched) {
+            <div class="mim-hata">
+              @if (password.errors?.['required']) {
+                Şifre zorunludur.
+              } @else if (password.errors?.['minlength']) {
+                Şifre en az 6 karakter olmalıdır.
+              }
+            </div>
+          }
+        </div>
+
+        <div class="mim-alan">
+          <label class="mim-etiket" for="confirmPassword">Şifre Tekrar</label>
+          <input
+            id="confirmPassword"
+            type="password"
+            class="mim-input"
+            formControlName="confirmPassword"
+            placeholder="Şifrenizi tekrar girin"
+            autocomplete="new-password"
+            [class.mim-input--hatali]="sifreEslesmiyor || (confirmPassword.invalid && confirmPassword.touched)" />
+
+          <!--
+            DİKKAT: Bu hata alanın kendisinde değil, FORM GRUBUNDA tutulur.
+            Çünkü kural iki alanı birden karşılaştırıyor.
+            O yüzden confirmPassword.errors yerine form.hasError(...) sonucunu
+            döndüren sifreEslesmiyor getter'ına bakıyoruz.
+          -->
+          @if (confirmPassword.invalid && confirmPassword.touched) {
+            <div class="mim-hata">Şifre tekrarı zorunludur.</div>
+          } @else if (sifreEslesmiyor) {
+            <div class="mim-hata">Şifreler eşleşmiyor.</div>
+          }
+        </div>
+
+        <button type="submit" class="mim-buton">
+          @if (yukleniyor()) {
+            Kayıt oluşturuluyor...
+          } @else {
+            Ocağa Katıl
+          }
+        </button>
+
+      </fieldset>
+    </form>
+
+    <p class="mim-altbilgi">
+      Zaten hesabın var mı?
+      <a class="mim-baglanti" routerLink="/login">Giriş yap</a>
+    </p>
+
+  </div>
+</div>

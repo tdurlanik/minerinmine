@@ -1,0 +1,285 @@
+/* ==========================================================================
+   MinerInMine — Global Tema
+   Madencilik atmosferi: koyu kaya zemini, altın ve bakır cevher vurguları.
+
+   CSS DEĞİŞKENLERİ (custom properties) NEDEN?
+   Renk kodlarını 40 farklı yere yazmak yerine tek yerde tanımlarız.
+   Temayı değiştirmek istediğimizde sadece buradaki değerleri değiştiririz.
+   ========================================================================== */
+
+:root {
+  /* Zemin katmanları — derinden yüzeye */
+  --kaya-derin: #0b0d12;
+  --kaya: #12151d;
+  --kaya-acik: #1a1f2b;
+  --kaya-kenar: #272d3d;
+
+  /* Cevher renkleri */
+  --altin: #f5b301;
+  --altin-koyu: #d49a00;
+  --altin-parlak: #ffd34d;
+  --bakir: #c87f4a;
+  --zumrut: #3ddc97;
+  --yakut: #ff5c67;
+
+  /* Metin */
+  --metin: #e8ecf4;
+  --metin-soluk: #97a1b5;
+  --metin-silik: #626c81;
+
+  /* Ölçüler */
+  --radius: 14px;
+  --radius-sm: 9px;
+  --gecis: 180ms ease;
+
+  color-scheme: dark;
+}
+
+/* Kutu modelini her yerde öngörülebilir yap: padding genişliğe EKLENMESİN. */
+*,
+*::before,
+*::after {
+  box-sizing: border-box;
+}
+
+html,
+body {
+  height: 100%;
+  margin: 0;
+}
+
+body {
+  font-family: 'Segoe UI', system-ui, -apple-system, 'Helvetica Neue', sans-serif;
+  color: var(--metin);
+  background-color: var(--kaya-derin);
+
+  /* Maden atmosferi: iki noktadan gelen sıcak ışık huzmesi + koyu zemin */
+  background-image:
+    radial-gradient(circle at 15% 0%, rgba(245, 179, 1, 0.13), transparent 45%),
+    radial-gradient(circle at 85% 100%, rgba(200, 127, 74, 0.11), transparent 45%);
+  background-attachment: fixed;
+  -webkit-font-smoothing: antialiased;
+}
+
+/* --------------------------------------------------------------------------
+   ORTAK BİLEŞEN SINIFLARI
+   Login ve Register sayfaları aynı görünümü paylaştığı için stilleri burada
+   bir kez tanımlayıp iki sayfada da kullanıyoruz (DRY).
+   -------------------------------------------------------------------------- */
+
+/* Sayfayı dikey + yatay ortalayan kabuk */
+.mim-sayfa {
+  min-height: 100dvh;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  padding: 24px 16px;
+}
+
+/* Form kartı */
+.mim-kart {
+  width: 100%;
+  max-width: 430px;
+  background: linear-gradient(180deg, var(--kaya-acik), var(--kaya));
+  border: 1px solid var(--kaya-kenar);
+  border-radius: var(--radius);
+  padding: 32px 28px;
+  box-shadow:
+    0 24px 60px rgba(0, 0, 0, 0.55),
+    inset 0 1px 0 rgba(255, 255, 255, 0.04);
+}
+
+/* Kartın üstündeki marka bloğu */
+.mim-marka {
+  text-align: center;
+  margin-bottom: 26px;
+}
+
+.mim-marka__ikon {
+  font-size: 40px;
+  line-height: 1;
+  display: block;
+  margin-bottom: 10px;
+}
+
+.mim-marka__ad {
+  margin: 0;
+  font-size: 26px;
+  font-weight: 700;
+  letter-spacing: 0.5px;
+
+  /* Metne altın gradyan uygulama tekniği:
+     arka planı metnin şekline kırp, yazı rengini şeffaf yap. */
+  background: linear-gradient(90deg, var(--altin-parlak), var(--bakir));
+  -webkit-background-clip: text;
+  background-clip: text;
+  color: transparent;
+}
+
+.mim-marka__alt {
+  margin: 6px 0 0;
+  font-size: 13px;
+  color: var(--metin-silik);
+}
+
+/* fieldset'in tarayıcıdan gelen varsayılan çerçevesini ve boşluklarını sıfırla.
+   Onu görsel bir kutu olarak değil, sadece "hepsini kilitle" aracı olarak kullanıyoruz. */
+.mim-fieldset {
+  border: none;
+  margin: 0;
+  padding: 0;
+  min-inline-size: 0; /* fieldset'in içeriği daraltmayı engelleyen varsayılan davranışını kapatır */
+}
+
+/* Form alanları */
+.mim-alan {
+  margin-bottom: 16px;
+}
+
+.mim-etiket {
+  display: block;
+  margin-bottom: 6px;
+  font-size: 13px;
+  font-weight: 600;
+  color: var(--metin-soluk);
+}
+
+.mim-input {
+  width: 100%;
+  padding: 11px 13px;
+  font-size: 15px;
+  font-family: inherit;
+  color: var(--metin);
+  background: var(--kaya-derin);
+  border: 1px solid var(--kaya-kenar);
+  border-radius: var(--radius-sm);
+  transition: border-color var(--gecis), box-shadow var(--gecis);
+}
+
+.mim-input::placeholder {
+  color: var(--metin-silik);
+}
+
+.mim-input:focus {
+  outline: none;
+  border-color: var(--altin);
+  box-shadow: 0 0 0 3px rgba(245, 179, 1, 0.16);
+}
+
+/* Hatalı alanı kırmızı çerçeveyle işaretle */
+.mim-input.mim-input--hatali {
+  border-color: var(--yakut);
+}
+
+.mim-input.mim-input--hatali:focus {
+  box-shadow: 0 0 0 3px rgba(255, 92, 103, 0.16);
+}
+
+.mim-input:disabled {
+  opacity: 0.55;
+  cursor: not-allowed;
+}
+
+/* Alan altındaki küçük hata yazısı */
+.mim-hata {
+  margin-top: 5px;
+  font-size: 12.5px;
+  color: var(--yakut);
+}
+
+/* Kart üstündeki genel uyarı bandı (API hataları için) */
+.mim-uyari {
+  display: flex;
+  gap: 9px;
+  align-items: flex-start;
+  padding: 11px 13px;
+  margin-bottom: 18px;
+  font-size: 13.5px;
+  border-radius: var(--radius-sm);
+  background: rgba(255, 92, 103, 0.1);
+  border: 1px solid rgba(255, 92, 103, 0.35);
+  color: #ffb3b8;
+}
+
+.mim-uyari--bilgi {
+  background: rgba(245, 179, 1, 0.1);
+  border-color: rgba(245, 179, 1, 0.35);
+  color: var(--altin-parlak);
+}
+
+/* Butonlar */
+.mim-buton {
+  width: 100%;
+  padding: 12px;
+  font-size: 15px;
+  font-weight: 700;
+  font-family: inherit;
+  color: #1a1200;
+  background: linear-gradient(180deg, var(--altin-parlak), var(--altin-koyu));
+  border: none;
+  border-radius: var(--radius-sm);
+  cursor: pointer;
+  transition: transform var(--gecis), filter var(--gecis), opacity var(--gecis);
+}
+
+.mim-buton:hover:not(:disabled) {
+  filter: brightness(1.08);
+  transform: translateY(-1px);
+}
+
+.mim-buton:active:not(:disabled) {
+  transform: translateY(0);
+}
+
+.mim-buton:disabled {
+  opacity: 0.5;
+  cursor: not-allowed;
+}
+
+.mim-buton--sade {
+  background: transparent;
+  border: 1px solid var(--kaya-kenar);
+  color: var(--metin-soluk);
+}
+
+.mim-buton--sade:hover:not(:disabled) {
+  border-color: var(--yakut);
+  color: var(--yakut);
+  filter: none;
+}
+
+/* Kart altındaki yönlendirme yazısı */
+.mim-altbilgi {
+  margin: 20px 0 0;
+  text-align: center;
+  font-size: 13.5px;
+  color: var(--metin-silik);
+}
+
+.mim-baglanti {
+  color: var(--altin);
+  font-weight: 600;
+  text-decoration: none;
+}
+
+.mim-baglanti:hover {
+  text-decoration: underline;
+}
+
+/* Rol / durum rozetleri */
+.mim-rozet {
+  display: inline-block;
+  padding: 3px 10px;
+  font-size: 12px;
+  font-weight: 600;
+  border-radius: 999px;
+  background: rgba(245, 179, 1, 0.14);
+  border: 1px solid rgba(245, 179, 1, 0.32);
+  color: var(--altin-parlak);
+}
+
+.mim-rozet--admin {
+  background: rgba(61, 220, 151, 0.14);
+  border-color: rgba(61, 220, 151, 0.32);
+  color: var(--zumrut);
+}

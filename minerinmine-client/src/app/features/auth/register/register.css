@@ -1,0 +1,23 @@
+/* Kayıt sayfasına özel stiller.
+   Ortak görünüm global styles.css'ten gelir. */
+
+.mim-kart {
+  animation: yukari-kay 320ms ease-out;
+}
+
+@keyframes yukari-kay {
+  from {
+    opacity: 0;
+    transform: translateY(12px);
+  }
+  to {
+    opacity: 1;
+    transform: translateY(0);
+  }
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .mim-kart {
+    animation: none;
+  }
+}

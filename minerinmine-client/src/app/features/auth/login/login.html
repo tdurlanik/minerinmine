@@ -1,0 +1,103 @@
+<div class="mim-sayfa">
+  <div class="mim-kart">
+
+    <div class="mim-marka">
+      <span class="mim-marka__ikon">⛏️</span>
+      <h1 class="mim-marka__ad">MinerInMine</h1>
+      <p class="mim-marka__alt">Madene inmek için kimliğini doğrula</p>
+    </div>
+
+    <!--
+      @if / @for : Angular 17+ ile gelen yerleşik kontrol akışı.
+      Eskiden *ngIf / *ngFor kullanılırdı ve bunun için CommonModule'ü import
+      etmek gerekirdi. Yeni sözdizimi dile gömülüdür, daha hızlı ve daha okunaklıdır.
+    -->
+    @if (oturumDoldu()) {
+      <div class="mim-uyari mim-uyari--bilgi">
+        <span>⏱️</span>
+        <span>Oturumunuzun süresi doldu. Lütfen tekrar giriş yapın.</span>
+      </div>
+    }
+
+    @if (hataMesaji()) {
+      <div class="mim-uyari">
+        <span>⚠️</span>
+        <span>{{ hataMesaji() }}</span>
+      </div>
+    }
+
+    <!--
+      [formGroup]="form" : HTML formunu TypeScript'teki form nesnesine bağlar.
+      (ngSubmit)         : Enter'a basıldığında da tetiklenir; butonun click'ini
+                           dinlemekten daha doğrudur.
+    -->
+    <form [formGroup]="form" (ngSubmit)="gonder()" novalidate>
+
+      <!--
+        <fieldset disabled> : içindeki TÜM form elemanlarını tek hamlede kilitler.
+        Bunu tercih ettik çünkü input'lara tek tek [disabled] bağlamak reaktif
+        formlarda Angular uyarısına yol açar (form durumu ile HTML özniteliği
+        birbiriyle çakışır). fieldset tarayıcının kendi özelliğidir, çakışma olmaz.
+      -->
+      <fieldset class="mim-fieldset" [disabled]="yukleniyor()">
+
+      <div class="mim-alan">
+        <label class="mim-etiket" for="loginInput">Kullanıcı Adı veya E-posta</label>
+        <input
+          id="loginInput"
+          type="text"
+          class="mim-input"
+          formControlName="loginInput"
+          placeholder="madenci_01"
+          autocomplete="username"
+          [class.mim-input--hatali]="loginInput.invalid && loginInput.touched" />
+
+        <!--
+          Hata mesajını SADECE alan hem geçersiz hem de "dokunulmuş" ise gösteriyoruz.
+          touched kontrolü olmasaydı, sayfa açılır açılmaz her alan kıpkırmızı olurdu.
+        -->
+        @if (loginInput.invalid && loginInput.touched) {
+          <div class="mim-hata">
+            @if (loginInput.errors?.['required']) {
+              Kullanıcı adı veya e-posta zorunludur.
+            } @else if (loginInput.errors?.['minlength']) {
+              En az 3 karakter girmelisiniz.
+            }
+          </div>
+        }
+      </div>
+
+      <div class="mim-alan">
+        <label class="mim-etiket" for="password">Şifre</label>
+        <input
+          id="password"
+          type="password"
+          class="mim-input"
+          formControlName="password"
+          placeholder="••••••••"
+          autocomplete="current-password"
+          [class.mim-input--hatali]="password.invalid && password.touched" />
+
+        @if (password.invalid && password.touched) {
+          <div class="mim-hata">Şifre zorunludur.</div>
+        }
+      </div>
+
+      <button type="submit" class="mim-buton">
+        @if (yukleniyor()) {
+          Kontrol ediliyor...
+        } @else {
+          Madene İn
+        }
+      </button>
+
+      </fieldset>
+    </form>
+
+    <p class="mim-altbilgi">
+      Henüz hesabın yok mu?
+      <a class="mim-baglanti" routerLink="/register">Ocağa katıl</a>
+    </p>
+
+  </div>
+</div>
