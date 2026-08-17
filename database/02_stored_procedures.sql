@@ -24,6 +24,16 @@ GO
 -- 1. SP: sp_RegisterUser (Yeni Kullanıcı Kaydı - Transaction ile Atomik)
 -- Açıklama: Kullanıcıyı ekler, 'Player' rolünü atar ve oyun profilini başlatır.
 -- Herhangi biri başarısız olursa ROLLBACK yapılarak veritabanı tutarlı kalır.
+--
+-- !!! DİKKAT — BU SÜRÜM ESKİDİR !!!
+-- Aşağıdaki tanım artık kaldırılmış olan PlayerProfiles tablosuna yazar.
+-- Geçerli sürüm 04_game_procedures.sql dosyasındadır ve oyun tablolarını
+-- (PlayerResources, PlayerFacilities, PlayerClickUnlocks...) doldurur.
+--
+-- Bu dosya, projenin geçmişini ve "genişlet / geçiş / daralt" göçünü
+-- belgelemek için olduğu gibi bırakılmıştır. Script'ler HER ZAMAN
+-- 01 -> 02 -> 03 -> 04 -> 05 sırasıyla çalıştırılmalıdır; yalnızca bu
+-- dosyayı çalıştırmak geçişi geri alır ve kayıt olma işlemini bozar.
 -- ============================================================================
 CREATE OR ALTER PROCEDURE sp_RegisterUser
     @Username NVARCHAR(50),
