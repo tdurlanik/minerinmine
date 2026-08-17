@@ -38,9 +38,10 @@ public class UserRepository : IUserRepository
 
     // ------------------------------------------------------------------------
     // 1. KAYIT — sp_RegisterUser
-    // Bu SP tek başına 3 tabloya yazar (Users, UserRoles, PlayerProfiles) ve bunu
-    // TRANSACTION içinde yapar. Yani ya üçü birden oluşur ya da hiçbiri.
-    // C# tarafında 3 ayrı INSERT yazsaydık, ikincisi patladığında yarım kullanıcı kalırdı.
+    // Bu SP tek başına birden fazla tabloya yazar (Users, UserRoles ve oyun
+    // başlangıç tabloları) ve bunu TRANSACTION içinde yapar: ya hepsi oluşur ya hiçbiri.
+    // C# tarafında ayrı ayrı INSERT yazsaydık, ortada biri patladığında
+    // yarım kullanıcı kalırdı.
     // ------------------------------------------------------------------------
     public async Task<RegisterDbResult> RegisterAsync(string username, string email, string passwordHash, string passwordSalt)
     {

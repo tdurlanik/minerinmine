@@ -124,6 +124,12 @@
   margin-top: 14px;
   padding: 9px 20px;
   font-size: 14px;
+
+  /* Bu sinif hem <button> hem <a> uzerinde kullaniliyor.
+     Bagalanti olarak kullanildiginda buton gibi gorunsun diye: */
+  display: inline-flex;
+  align-items: center;
+  text-decoration: none;
 }
 
 .kutu__sonuc {

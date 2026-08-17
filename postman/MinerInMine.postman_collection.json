@@ -63,7 +63,7 @@
           "host": ["{{baseUrl}}"],
           "path": ["api", "auth", "register"]
         },
-        "description": "Yeni kullanici olusturur. sp_RegisterUser transaction icinde Users + UserRoles + PlayerProfiles kayitlarini birlikte yazar. Basarili olursa otomatik giris yapilir ve token doner."
+        "description": "Yeni kullanici olusturur. sp_RegisterUser transaction icinde kullaniciyi, rolunu ve oyun baslangic durumunu (kaynaklar, Demir Ocagi, ilk kazma turu) birlikte yazar. Basarili olursa otomatik giris yapilir ve token doner."
       }
     },
     {

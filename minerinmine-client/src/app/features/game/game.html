@@ -1,0 +1,114 @@
+<div class="oyun">
+
+  <header class="ust">
+    <div class="ust__marka">
+      <span class="ust__ikon">⛏️</span>
+      <div>
+        <h1 class="ust__baslik">MinerInMine</h1>
+        <p class="ust__alt">{{ auth.username() }}</p>
+      </div>
+    </div>
+
+    <!-- Kaynak sayaclari. Bu sayilar sunucudan gelir, tarayicida hesaplanmaz. -->
+    <div class="kaynaklar">
+      @for (kaynak of game.resources(); track kaynak.resourceTypeId) {
+        <div class="kaynak" [class.kaynak--para]="kaynak.isCurrency">
+          <span class="kaynak__ad">{{ kaynak.name }}</span>
+          <span class="kaynak__deger">{{ bicimle(kaynak.amount) }}</span>
+        </div>
+      }
+    </div>
+
+    <div class="ust__butonlar">
+      <a class="mim-buton mim-buton--sade ust__buton" routerLink="/dashboard">Panel</a>
+      <button type="button" class="mim-buton mim-buton--sade ust__buton" (click)="cikisYap()">Çıkış</button>
+    </div>
+  </header>
+
+  <main class="govde">
+
+    @if (yukleniyor()) {
+      <p class="bilgi">Maden hazırlanıyor...</p>
+    } @else if (hataMesaji() && game.facilities().length === 0) {
+      <div class="mim-uyari"><span>⚠️</span><span>{{ hataMesaji() }}</span></div>
+    } @else {
+
+      @if (hataMesaji()) {
+        <div class="mim-uyari"><span>⏳</span><span>{{ hataMesaji() }}</span></div>
+      }
+
+      @for (tesis of game.facilities(); track tesis.facilityTypeId) {
+        <section class="tesis">
+
+          <div class="tesis__ust">
+            <div>
+              <h2 class="tesis__ad">{{ tesis.name }}</h2>
+              <p class="tesis__bilgi">
+                Seviye {{ tesis.level }} / {{ tesis.maxLevel }}
+                · kazma başına <strong>{{ tesis.currentProduction }}</strong> {{ tesis.resourceName }}
+              </p>
+            </div>
+
+            <!-- Kazanc balonu: anahtar her kazancta degistigi icin @if yeniden
+                 kurulur ve CSS animasyonu bastan oynar. -->
+            @if (sonKazanc(); as kazanc) {
+              @if (kazanc.facilityTypeId === tesis.facilityTypeId) {
+                <span class="kazanc" [attr.data-anahtar]="kazanc.anahtar">
+                  +{{ kazanc.miktar }}
+                </span>
+              }
+            }
+          </div>
+
+          <div class="kazmalar">
+            @for (kazma of game.unlockedClicks(); track kazma.clickTypeId) {
+              <button
+                type="button"
+                class="kazma"
+                [class.kazma--hazir]="game.isReady(tesis.facilityTypeId, kazma.clickTypeId)"
+                [disabled]="!game.isReady(tesis.facilityTypeId, kazma.clickTypeId)"
+                (click)="kaz(tesis, kazma)">
+
+                <!-- Bekleme suresini gosteren dolum katmani -->
+                <span class="kazma__dolum"
+                      [style.width.%]="ilerleme(tesis.facilityTypeId, kazma.clickTypeId, kazma.cooldownSeconds)">
+                </span>
+
+                <span class="kazma__icerik">
+                  <span class="kazma__ad">{{ kazma.name }}</span>
+                  @if (game.isReady(tesis.facilityTypeId, kazma.clickTypeId)) {
+                    <span class="kazma__durum">×{{ kazma.yieldMultiplier }} · hazır</span>
+                  } @else {
+                    <span class="kazma__durum">{{ kalanMetin(tesis.facilityTypeId, kazma.clickTypeId) }}</span>
+                  }
+                </span>
+              </button>
+            }
+          </div>
+        </section>
+      }
+
+      <!-- Henuz acilmamis kazma turleri (Gun 4'te satin alinabilir olacak) -->
+      @if (game.clickTypes().length > game.unlockedClicks().length) {
+        <section class="kilitli">
+          <h3 class="kilitli__baslik">🔒 Açılmamış Kazmalar</h3>
+          <div class="kilitli__liste">
+            @for (kazma of game.clickTypes(); track kazma.clickTypeId) {
+              @if (!kazma.isUnlocked) {
+                <div class="kilitli__oge">
+                  <span>{{ kazma.name }}</span>
+                  <span class="kilitli__bilgi">
+                    {{ kazma.cooldownSeconds }} sn · ×{{ kazma.yieldMultiplier }}
+                    · {{ bicimle(kazma.unlockCost) }} Kristal
+                  </span>
+                </div>
+              }
+            }
+          </div>
+        </section>
+      }
+
+    }
+
+  </main>
+</div>

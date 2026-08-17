@@ -26,8 +26,8 @@ public class AuthController : ControllerBase
 
     /// <summary>Yeni kullanıcı kaydı oluşturur ve otomatik giriş yaptırır.</summary>
     /// <remarks>
-    /// Başarılı olduğunda Users + UserRoles + PlayerProfiles kayıtları tek bir
-    /// transaction içinde birlikte oluşur (sp_RegisterUser).
+    /// Başarılı olduğunda kullanıcı, rolü ve oyun başlangıç durumu (kaynaklar,
+    /// Demir Ocağı, ilk kazma türü) tek bir transaction içinde birlikte oluşur.
     /// </remarks>
     [HttpPost("register")]
     [ProducesResponseType(typeof(AuthResponse), StatusCodes.Status200OK)]

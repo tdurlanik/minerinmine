@@ -51,7 +51,8 @@ public class AuthService : IAuthService
         // 1) Şifreyi hash'le. Açık şifre bu satırdan sonra hiçbir yere yazılmaz.
         var (hash, salt) = _passwordHasher.Create(request.Password);
 
-        // 2) SP çağır. SP kendi içinde transaction ile Users + UserRoles + PlayerProfiles yazar.
+        // 2) SP çağır. SP kendi içinde transaction ile kullanıcıyı, rolünü ve
+        //    oyun başlangıç durumunu (kaynaklar, ilk tesis, ilk kazma türü) birlikte yazar.
         var dbResult = await _repository.RegisterAsync(
             request.Username.Trim(),
             request.Email.Trim().ToLowerInvariant(),   // e-postayı normalize ediyoruz

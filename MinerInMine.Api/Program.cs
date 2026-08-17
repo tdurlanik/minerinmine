@@ -44,6 +44,8 @@ builder.Services.AddSingleton<ISqlConnectionFactory, SqlConnectionFactory>();
 // İstek başına çalışan, veritabanına dokunan servisler → Scoped.
 builder.Services.AddScoped<IUserRepository, UserRepository>();
 builder.Services.AddScoped<IAuthService, AuthService>();
+builder.Services.AddScoped<IGameRepository, GameRepository>();
+builder.Services.AddScoped<IGameService, GameService>();
 
 builder.Services.AddControllers();
 

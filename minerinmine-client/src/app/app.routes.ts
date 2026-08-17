@@ -39,6 +39,12 @@ export const routes: Routes = [
       import('./features/dashboard/dashboard').then((m) => m.DashboardComponent)
   },
   {
+    path: 'game',
+    title: 'Maden · MinerInMine',
+    canActivate: [authGuard],
+    loadComponent: () => import('./features/game/game').then((m) => m.GameComponent)
+  },
+  {
     path: '**', // yukarıdakilerin hiçbiriyle eşleşmeyen her adres
     redirectTo: 'login'
   }
