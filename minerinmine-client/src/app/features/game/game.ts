@@ -349,6 +349,34 @@ export class GameComponent implements OnInit {
     this.satisMiktari.update((m) => ({ ...m, [resourceTypeId]: deger }));
   }
 
+  /**
+   * Reklam izleyip Kristal kazanir (gelistirme ortaminda simule edilir).
+   *
+   * Sunucu ayni bildirimi ikinci kez islemez (idempotency); o durumda
+   * alreadyProcessed=true doner ve odul tekrar verilmez.
+   */
+  reklamIzle(): void {
+    this.islemdeki.set(-1);
+    this.hataMesaji.set(null);
+    this.bilgiMesaji.set(null);
+
+    this.game.watchAd().subscribe({
+      next: (sonuc) => {
+        this.islemdeki.set(null);
+        this.bilgiMesaji.set(
+          sonuc.alreadyProcessed
+            ? 'Bu ödül zaten verilmiş.'
+            : '+' + this.bicimle(sonuc.amount) + ' Kristal kazandın!'
+        );
+        this.durumuYenile();
+      },
+      error: (hata: HttpErrorResponse) => {
+        this.islemdeki.set(null);
+        this.hataMesaji.set(this.hatayiCozumle(hata, 'Ödül alınamadı.'));
+      }
+    });
+  }
+
   /** Satilabilir kaynaklar: para birimi olmayan ve elde bulunanlar. */
   satilabilirler() {
     return this.game.resources().filter((r) => !r.isCurrency && r.amount > 0);

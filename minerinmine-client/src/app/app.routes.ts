@@ -1,5 +1,5 @@
 import { Routes } from '@angular/router';
-import { authGuard, guestGuard } from './core/guards/auth.guard';
+import { adminGuard, authGuard, guestGuard } from './core/guards/auth.guard';
 
 /**
  * ROTA TABLOSU — hangi adres hangi bileşeni açar?
@@ -43,6 +43,20 @@ export const routes: Routes = [
     title: 'Maden · MinerInMine',
     canActivate: [authGuard],
     loadComponent: () => import('./features/game/game').then((m) => m.GameComponent)
+  },
+  {
+    path: 'leaderboard',
+    title: 'Sıralama · MinerInMine',
+    canActivate: [authGuard],
+    loadComponent: () =>
+      import('./features/leaderboard/leaderboard').then((m) => m.LeaderboardComponent)
+  },
+  {
+    path: 'admin',
+    title: 'Yönetim · MinerInMine',
+    // Iki bekci sirayla calisir: once giris yapilmis mi, sonra Admin mi.
+    canActivate: [authGuard, adminGuard],
+    loadComponent: () => import('./features/admin/admin').then((m) => m.AdminComponent)
   },
   {
     path: '**', // yukarıdakilerin hiçbiriyle eşleşmeyen her adres

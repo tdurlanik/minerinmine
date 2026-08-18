@@ -45,3 +45,22 @@ export const guestGuard: CanActivateFn = () => {
   router.navigate(['/dashboard']);
   return false;
 };
+
+/**
+ * Yalnizca Admin rolundeki kullanicilarin gecebildigi rota bekcisi.
+ *
+ * Yine hatirlatma: bu bir GUVENLIK duvari degildir. Kullanici localStorage'i
+ * kurcalayip rolunu "Admin" yapabilir ve sayfayi acabilir — ama sunucudaki
+ * [Authorize(Roles = "Admin")] yuzunden tek bir veri bile goremez.
+ */
+export const adminGuard: CanActivateFn = () => {
+  const authService = inject(AuthService);
+  const router = inject(Router);
+
+  if (authService.isAdmin()) {
+    return true;
+  }
+
+  router.navigate(['/game']);
+  return false;
+};

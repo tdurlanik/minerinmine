@@ -16,6 +16,7 @@ import {
   UpgradeFinished,
   UpgradeStarted
 } from '../models/game.models';
+import { AdRewardResult } from '../models/meta.models';
 
 /**
  * Oyun durumunu tutan ve API ile konusan servis.
@@ -317,6 +318,17 @@ export class GameService {
     return this.http
       .post<PurchaseResult>(`${this.apiUrl}/upgrade/${upgradeTypeId}`, {})
       .pipe(tap((r) => this.syncClock(r.serverTime)));
+  }
+
+  /**
+   * Reklam izlemeyi simule eder (yalnizca gelistirme ortaminda calisir).
+   *
+   * GERCEK DUNYADA bu uc BULUNMAZ: reklam agi izleme bitince dogrudan
+   * sunucumuza imzali bir bildirim gonderir ve istemci akisin icinde yer almaz.
+   * Istemcinin "odul ver" diyebildigi bir uc, odulun taklit edilebilmesi demektir.
+   */
+  watchAd(): Observable<AdRewardResult> {
+    return this.http.post<AdRewardResult>(`${environment.apiUrl}/ads/simulate-watch`, {});
   }
 
   unlockClick(clickTypeId: number): Observable<UnlockResult> {

@@ -1,0 +1,52 @@
+<div class="sayfa">
+  <header class="ust">
+    <h1 class="ust__baslik">🏆 Sıralama</h1>
+    <a class="mim-buton mim-buton--sade ust__buton" routerLink="/game">← Madene dön</a>
+  </header>
+
+  <main class="govde">
+    @if (yukleniyor()) {
+      <p class="bos">Sıralama yükleniyor...</p>
+    } @else if (hataMesaji()) {
+      <div class="mim-uyari"><span>⚠️</span><span>{{ hataMesaji() }}</span></div>
+    } @else if (veri(); as d) {
+
+      @if (d.me) {
+        <section class="kendim">
+          <span class="kendim__sira">{{ madalya(d.me.position) }}</span>
+          <div>
+            <p class="kendim__ad">{{ d.me.username }}</p>
+            <p class="kendim__bilgi">
+              {{ d.me.totalPlayers }} oyuncu arasında {{ d.me.position }}. sıradasın
+            </p>
+          </div>
+          <span class="kendim__servet">{{ bicimle(d.me.totalWealth) }}</span>
+        </section>
+      }
+
+      <section class="tablo">
+        <div class="satir satir--baslik">
+          <span class="hucre hucre--sira">Sıra</span>
+          <span class="hucre hucre--ad">Oyuncu</span>
+          <span class="hucre">Servet</span>
+          <span class="hucre hucre--gizle">Seviye</span>
+          <span class="hucre hucre--gizle">Madenci</span>
+        </div>
+
+        @for (o of d.top; track o.position + o.username) {
+          <div class="satir" [class.satir--ben]="o.isMe">
+            <span class="hucre hucre--sira">{{ madalya(o.position) }}</span>
+            <span class="hucre hucre--ad">{{ o.username }}</span>
+            <span class="hucre hucre--servet">{{ bicimle(o.totalWealth) }}</span>
+            <span class="hucre hucre--gizle">{{ o.totalLevels }}</span>
+            <span class="hucre hucre--gizle">{{ o.totalMiners }}</span>
+          </div>
+        }
+      </section>
+
+      <p class="not">
+        Servet = Kristal + elindeki madenlerin satış değeri.
+      </p>
+    }
+  </main>
+</div>

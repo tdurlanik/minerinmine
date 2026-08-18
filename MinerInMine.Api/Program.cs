@@ -39,12 +39,14 @@ builder.Services.Configure<JwtSettings>(
 // Durumu olmayan yardımcı servisler → Singleton yeterli ve daha performanslı.
 builder.Services.AddSingleton<IPasswordHasher, PasswordHasher>();
 builder.Services.AddSingleton<ITokenService, TokenService>();
+builder.Services.AddSingleton<IAdSignatureService, AdSignatureService>();
 builder.Services.AddSingleton<ISqlConnectionFactory, SqlConnectionFactory>();
 
 // İstek başına çalışan, veritabanına dokunan servisler → Scoped.
 builder.Services.AddScoped<IUserRepository, UserRepository>();
 builder.Services.AddScoped<IAuthService, AuthService>();
 builder.Services.AddScoped<IGameRepository, GameRepository>();
+builder.Services.AddScoped<IAdminRepository, AdminRepository>();
 builder.Services.AddScoped<IGameService, GameService>();
 
 builder.Services.AddControllers();

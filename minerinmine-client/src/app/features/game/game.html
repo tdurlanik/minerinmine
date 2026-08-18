@@ -27,6 +27,10 @@
     }
 
     <div class="ust__butonlar">
+      <a class="mim-buton mim-buton--sade ust__buton" routerLink="/leaderboard">🏆 Sıralama</a>
+      @if (auth.isAdmin()) {
+        <a class="mim-buton mim-buton--sade ust__buton" routerLink="/admin">🛡️ Yönetim</a>
+      }
       <a class="mim-buton mim-buton--sade ust__buton" routerLink="/dashboard">Panel</a>
       <button type="button" class="mim-buton mim-buton--sade ust__buton" (click)="cikisYap()">Çıkış</button>
     </div>
@@ -69,6 +73,13 @@
         <p class="uretim__not">
           Madenciler sen oyunda değilken de çalışır (en fazla 8 saatlik birikim).
         </p>
+
+        <!-- Reklam odulu: gercekte odulu reklam agi sunucumuza imzali olarak
+             bildirir; burada o akisi simule ediyoruz. -->
+        <button type="button" class="mim-buton mim-buton--sade reklam"
+                [disabled]="islemdeki() === -1" (click)="reklamIzle()">
+          🎬 Reklam izle · +250 Kristal
+        </button>
       </section>
 
       @for (tesis of game.facilities(); track tesis.facilityTypeId) {

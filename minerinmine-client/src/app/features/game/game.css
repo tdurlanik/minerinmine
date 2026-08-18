@@ -615,3 +615,11 @@
   .uretim__buton { width: 100%; }
   .satis__giris { width: 80px; }
 }
+
+/* Reklam odulu butonu */
+.reklam {
+  width: 100%;
+  margin-top: 12px;
+  padding: 9px;
+  font-size: 13.5px;
+}

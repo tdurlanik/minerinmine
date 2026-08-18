@@ -1,0 +1,83 @@
+.sayfa { min-height: 100dvh; display: flex; flex-direction: column; }
+
+.ust {
+  display: flex; align-items: center; justify-content: space-between; gap: 14px;
+  padding: 16px 22px; border-bottom: 1px solid var(--kaya-kenar);
+  background: rgba(18, 21, 29, 0.9);
+}
+
+.ust__baslik { margin: 0; font-size: 19px; font-weight: 700; color: var(--zumrut); }
+
+.ust__buton {
+  width: auto; padding: 7px 14px; font-size: 13px;
+  text-decoration: none; display: inline-flex; align-items: center;
+}
+
+.govde {
+  flex: 1; width: 100%; max-width: 960px; margin: 0 auto;
+  padding: 24px 18px 48px; display: flex; flex-direction: column; gap: 16px;
+}
+
+.kart {
+  background: linear-gradient(180deg, var(--kaya-acik), var(--kaya));
+  border: 1px solid var(--kaya-kenar); border-radius: var(--radius); padding: 18px 20px;
+}
+
+.kart--uyari { border-left: 3px solid var(--yakut); }
+
+.kart__ust {
+  display: flex; align-items: center; justify-content: space-between;
+  gap: 12px; flex-wrap: wrap; margin-bottom: 12px;
+}
+
+.kart__baslik { margin: 0; font-size: 16px; font-weight: 700; }
+.kart__aciklama { margin: 4px 0 10px; font-size: 12.5px; color: var(--metin-silik); }
+
+.arama {
+  padding: 8px 12px; font-family: inherit; font-size: 13px; color: var(--metin);
+  background: var(--kaya-derin); border: 1px solid var(--kaya-kenar);
+  border-radius: var(--radius-sm); min-width: 220px;
+}
+
+.arama:focus { outline: none; border-color: var(--altin); }
+
+.bos { text-align: center; color: var(--metin-silik); font-size: 13.5px; }
+
+.tablo { border: 1px solid var(--kaya-kenar); border-radius: var(--radius-sm); overflow: hidden; }
+
+.satir {
+  display: grid; grid-template-columns: 1.4fr 1.1fr 96px 50px 70px 120px;
+  gap: 8px; align-items: center; padding: 10px 14px;
+  border-top: 1px solid var(--kaya-kenar); font-size: 13px;
+}
+
+.satir--baslik {
+  border-top: none; background: var(--kaya-derin); font-size: 11.5px;
+  text-transform: uppercase; letter-spacing: 0.5px; color: var(--metin-silik);
+}
+
+.satir__ad { font-weight: 600; }
+.pasif { font-size: 11px; color: var(--yakut); }
+.rol, .tarih { color: var(--metin-silik); font-size: 12px; }
+.servet { color: var(--altin-parlak); font-weight: 700; font-variant-numeric: tabular-nums; }
+
+.supheli {
+  display: flex; justify-content: space-between; gap: 12px;
+  padding: 8px 0; border-top: 1px solid var(--kaya-kenar); font-size: 13px;
+}
+
+.supheli__ad { font-weight: 600; }
+.supheli__bilgi { color: var(--yakut); }
+
+.sayfalama {
+  display: flex; align-items: center; justify-content: center;
+  gap: 14px; margin-top: 14px;
+}
+
+.sayfalama__buton { width: auto; padding: 7px 14px; font-size: 13px; }
+.sayfalama__bilgi { font-size: 13px; color: var(--metin-soluk); font-variant-numeric: tabular-nums; }
+
+@media (max-width: 720px) {
+  .satir { grid-template-columns: 1.5fr 100px; }
+  .gizle { display: none; }
+}

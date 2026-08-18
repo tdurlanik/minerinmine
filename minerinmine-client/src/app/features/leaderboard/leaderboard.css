@@ -1,0 +1,64 @@
+.sayfa { min-height: 100dvh; display: flex; flex-direction: column; }
+
+.ust {
+  display: flex; align-items: center; justify-content: space-between; gap: 14px;
+  padding: 16px 22px; border-bottom: 1px solid var(--kaya-kenar);
+  background: rgba(18, 21, 29, 0.9);
+}
+
+.ust__baslik {
+  margin: 0; font-size: 19px; font-weight: 700;
+  background: linear-gradient(90deg, var(--altin-parlak), var(--bakir));
+  -webkit-background-clip: text; background-clip: text; color: transparent;
+}
+
+.ust__buton { width: auto; padding: 7px 14px; font-size: 13px; text-decoration: none;
+  display: inline-flex; align-items: center; }
+
+.govde { flex: 1; width: 100%; max-width: 760px; margin: 0 auto; padding: 24px 18px 48px;
+  display: flex; flex-direction: column; gap: 16px; }
+
+.bos { text-align: center; color: var(--metin-silik); }
+
+/* Kendi siram */
+.kendim {
+  display: flex; align-items: center; gap: 14px; padding: 16px 20px;
+  background: rgba(245, 179, 1, 0.08);
+  border: 1px solid rgba(245, 179, 1, 0.35);
+  border-radius: var(--radius);
+}
+.kendim__sira { font-size: 26px; min-width: 46px; text-align: center; }
+.kendim__ad { margin: 0; font-weight: 700; font-size: 15px; }
+.kendim__bilgi { margin: 2px 0 0; font-size: 12.5px; color: var(--metin-soluk); }
+.kendim__servet { margin-left: auto; font-size: 19px; font-weight: 700;
+  color: var(--altin-parlak); font-variant-numeric: tabular-nums; }
+
+/* Tablo */
+.tablo {
+  background: linear-gradient(180deg, var(--kaya-acik), var(--kaya));
+  border: 1px solid var(--kaya-kenar); border-radius: var(--radius); overflow: hidden;
+}
+
+.satir {
+  display: grid; grid-template-columns: 62px 1fr 110px 76px 76px;
+  align-items: center; gap: 8px; padding: 11px 16px;
+  border-top: 1px solid var(--kaya-kenar); font-size: 13.5px;
+}
+
+.satir--baslik {
+  border-top: none; font-size: 11.5px; text-transform: uppercase;
+  letter-spacing: 0.5px; color: var(--metin-silik); background: var(--kaya-derin);
+}
+
+.satir--ben { background: rgba(245, 179, 1, 0.09); }
+
+.hucre--sira { text-align: center; }
+.hucre--ad { font-weight: 600; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+.hucre--servet { color: var(--altin-parlak); font-weight: 700; font-variant-numeric: tabular-nums; }
+
+.not { margin: 0; text-align: center; font-size: 12px; color: var(--metin-silik); }
+
+@media (max-width: 560px) {
+  .satir { grid-template-columns: 52px 1fr 96px; }
+  .hucre--gizle { display: none; }
+}

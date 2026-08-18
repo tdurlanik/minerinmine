@@ -1,0 +1,76 @@
+<div class="sayfa">
+  <header class="ust">
+    <h1 class="ust__baslik">🛡️ Yönetim Paneli</h1>
+    <a class="mim-buton mim-buton--sade ust__buton" routerLink="/game">← Madene dön</a>
+  </header>
+
+  <main class="govde">
+    @if (hataMesaji()) {
+      <div class="mim-uyari"><span>⚠️</span><span>{{ hataMesaji() }}</span></div>
+    }
+
+    @if (supheliler().length > 0) {
+      <section class="kart kart--uyari">
+        <h2 class="kart__baslik">⚠️ Son 1 saatte olağandışı kazanç</h2>
+        <p class="kart__aciklama">
+          Hile kanıtı değil, inceleme listesi — yüksek kazanç meşru da olabilir.
+        </p>
+        @for (s of supheliler(); track s.userId + s.resourceCode) {
+          <div class="supheli">
+            <span class="supheli__ad">{{ s.username }}</span>
+            <span class="supheli__bilgi">
+              {{ s.resourceCode }} · +{{ bicimle(s.gain) }} · {{ s.transactionCount }} işlem
+            </span>
+          </div>
+        }
+      </section>
+    }
+
+    <section class="kart">
+      <div class="kart__ust">
+        <h2 class="kart__baslik">Oyuncular ({{ toplam() }})</h2>
+        <input class="arama" type="search" placeholder="kullanıcı adı veya e-posta ara"
+               (input)="aramaDegisti($event)" />
+      </div>
+
+      @if (yukleniyor()) {
+        <p class="bos">Yükleniyor...</p>
+      } @else if (oyuncular().length === 0) {
+        <p class="bos">Kayıt bulunamadı.</p>
+      } @else {
+        <div class="tablo">
+          <div class="satir satir--baslik">
+            <span>Kullanıcı</span>
+            <span class="gizle">Roller</span>
+            <span>Servet</span>
+            <span class="gizle">Sv</span>
+            <span class="gizle">Madenci</span>
+            <span class="gizle">Son giriş</span>
+          </div>
+
+          @for (o of oyuncular(); track o.userId) {
+            <div class="satir">
+              <span class="satir__ad">
+                {{ o.username }}
+                @if (!o.isActive) { <span class="pasif">pasif</span> }
+              </span>
+              <span class="gizle rol">{{ o.roles }}</span>
+              <span class="servet">{{ bicimle(o.totalWealth) }}</span>
+              <span class="gizle">{{ o.totalLevels }}</span>
+              <span class="gizle">{{ o.totalMiners }}</span>
+              <span class="gizle tarih">{{ tarih(o.lastLoginAt) }}</span>
+            </div>
+          }
+        </div>
+
+        <div class="sayfalama">
+          <button type="button" class="mim-buton mim-buton--sade sayfalama__buton"
+                  [disabled]="sayfa() === 1" (click)="sayfaDegistir(-1)">← Önceki</button>
+          <span class="sayfalama__bilgi">{{ sayfa() }} / {{ sonSayfa }}</span>
+          <button type="button" class="mim-buton mim-buton--sade sayfalama__buton"
+                  [disabled]="sayfa() >= sonSayfa" (click)="sayfaDegistir(1)">Sonraki →</button>
+        </div>
+      }
+    </section>
+  </main>
+</div>
