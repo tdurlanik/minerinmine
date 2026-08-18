@@ -19,6 +19,13 @@
       }
     </div>
 
+    @if (game.totalPerSecond() > 0) {
+      <div class="oto">
+        <span class="oto__ad">OTOMATİK</span>
+        <span class="oto__deger">{{ game.totalPerSecond() }}/sn</span>
+      </div>
+    }
+
     <div class="ust__butonlar">
       <a class="mim-buton mim-buton--sade ust__buton" routerLink="/dashboard">Panel</a>
       <button type="button" class="mim-buton mim-buton--sade ust__buton" (click)="cikisYap()">Çıkış</button>
@@ -40,6 +47,29 @@
       @if (bilgiMesaji()) {
         <div class="mim-uyari mim-uyari--bilgi"><span>✅</span><span>{{ bilgiMesaji() }}</span></div>
       }
+
+      <!-- ============ BIRIKMIS URETIM ============ -->
+      <section class="uretim">
+        <div class="uretim__ust">
+          <div>
+            <h3 class="uretim__baslik">⛏️ Madenci Üretimi</h3>
+            @if (game.hasPending()) {
+              <p class="uretim__bilgi">Bekleyen: <strong>{{ bekleyenMetin() }}</strong></p>
+            } @else if (game.totalPerSecond() > 0) {
+              <p class="uretim__bilgi">Madencilerin çalışıyor… saniyede {{ game.totalPerSecond() }} üretim.</p>
+            } @else {
+              <p class="uretim__bilgi">Henüz madencin yok. Tesislerden madenci alarak üretimi otomatikleştir.</p>
+            }
+          </div>
+          <button type="button" class="mim-buton uretim__buton"
+                  [disabled]="!game.hasPending()" (click)="topla()">
+            📦 Topla
+          </button>
+        </div>
+        <p class="uretim__not">
+          Madenciler sen oyunda değilken de çalışır (en fazla 8 saatlik birikim).
+        </p>
+      </section>
 
       @for (tesis of game.facilities(); track tesis.facilityTypeId) {
         <section class="tesis">
@@ -87,6 +117,32 @@
                   }
                 </span>
               </button>
+            }
+          </div>
+
+          <!-- ================= MADENCILER ================= -->
+          <div class="madenciler">
+            @for (madenci of game.minersOf(tesis.facilityTypeId); track madenci.minerTypeId) {
+              <div class="madenci" [class.madenci--kilitli]="!madenci.isAvailable">
+                <div class="madenci__sol">
+                  <span class="madenci__ad">{{ madenci.name }}</span>
+                  <span class="madenci__bilgi">
+                    @if (madenci.isAvailable) {
+                      {{ madenci.count }}/{{ madenci.maxCount }} · her biri {{ madenci.perSecondEach }}/sn
+                    } @else {
+                      🔒 önce {{ madenci.clickName }} açılmalı
+                    }
+                  </span>
+                </div>
+                <button type="button" class="madenci__buton"
+                        [disabled]="!madenci.isAvailable || madenci.count >= madenci.maxCount
+                                    || kristal() < madenci.hireCost
+                                    || islemdeki() === madenci.minerTypeId"
+                        (click)="madenciAl(madenci)">
+                  @if (madenci.count >= madenci.maxCount) { Dolu }
+                  @else { +1 · {{ bicimle(madenci.hireCost) }} }
+                </button>
+              </div>
             }
           </div>
 
@@ -149,24 +205,76 @@
         </section>
       }
 
-      <!-- Henuz acilmamis kazma turleri (Gun 4'te satin alinabilir olacak) -->
+      <!-- ============ SATIS ============ -->
+      @if (satilabilirler().length > 0) {
+        <section class="dukkan">
+          <h3 class="dukkan__baslik">💰 Maden Satışı</h3>
+          <p class="dukkan__aciklama">Madenlerini Kristal'e çevir. Kristal her şeyi satın alır.</p>
+
+          @for (kaynak of satilabilirler(); track kaynak.resourceTypeId) {
+            <div class="satis">
+              <span class="satis__ad">
+                {{ kaynak.name }}
+                <span class="satis__birim">birimi {{ kaynak.sellValue }} Kristal</span>
+              </span>
+              <input class="satis__giris" type="number" min="1" [max]="kaynak.amount"
+                     [value]="kaynak.amount"
+                     (input)="miktarDegisti(kaynak.resourceTypeId, $event)" />
+              <button type="button" class="satis__buton"
+                      [disabled]="islemdeki() === kaynak.resourceTypeId"
+                      (click)="sat(kaynak.resourceTypeId, kaynak.amount)">
+                Sat
+              </button>
+            </div>
+          }
+        </section>
+      }
+
+      <!-- ============ GUCLENDIRMELER ============ -->
+      <section class="dukkan">
+        <h3 class="dukkan__baslik">⚡ Kalıcı Güçlendirmeler</h3>
+        @for (g of game.upgrades(); track g.upgradeTypeId) {
+          <div class="urun">
+            <div class="urun__sol">
+              <span class="urun__ad">{{ g.name }} <span class="urun__sv">sv {{ g.level }}/{{ g.maxLevel }}</span></span>
+              <span class="urun__bilgi">{{ g.description }}</span>
+            </div>
+            <button type="button" class="urun__buton"
+                    [disabled]="g.nextLevelCost === null || kristal() < g.nextLevelCost
+                                || islemdeki() === g.upgradeTypeId"
+                    (click)="guclendirmeAl(g)">
+              @if (g.nextLevelCost === null) { Son seviye }
+              @else { {{ bicimle(g.nextLevelCost) }} Kristal }
+            </button>
+          </div>
+        }
+      </section>
+
+      <!-- ============ KAZMA TURLERI ============ -->
       @if (game.clickTypes().length > game.unlockedClicks().length) {
-        <section class="kilitli">
-          <h3 class="kilitli__baslik">🔒 Açılmamış Kazmalar</h3>
-          <div class="kilitli__liste">
-            @for (kazma of game.clickTypes(); track kazma.clickTypeId) {
-              @if (!kazma.isUnlocked) {
-                <div class="kilitli__oge">
-                  <span>{{ kazma.name }}</span>
-                  <span class="kilitli__bilgi">
-                    {{ kazma.cooldownSeconds }} sn · ×{{ kazma.yieldMultiplier }}
-                    · {{ bicimle(kazma.unlockCost) }} Kristal
+        <section class="dukkan">
+          <h3 class="dukkan__baslik">🔓 Yeni Kazma Türleri</h3>
+          <p class="dukkan__aciklama">
+            Uzun kazmalar saniye başına daha verimlidir. Açtığın kazmanın madencisini de işe alabilirsin.
+          </p>
+
+          @for (kazma of game.clickTypes(); track kazma.clickTypeId) {
+            @if (!kazma.isUnlocked) {
+              <div class="urun">
+                <div class="urun__sol">
+                  <span class="urun__ad">{{ kazma.name }}</span>
+                  <span class="urun__bilgi">
+                    {{ kazma.cooldownSeconds }} sn bekleme · ×{{ kazma.yieldMultiplier }} verim
                   </span>
                 </div>
-              }
+                <button type="button" class="urun__buton"
+                        [disabled]="kristal() < kazma.unlockCost || islemdeki() === kazma.clickTypeId"
+                        (click)="kazmaAc(kazma)">
+                  {{ bicimle(kazma.unlockCost) }} Kristal
+                </button>
+              </div>
             }
-          </div>
-
+          }
         </section>
       }
 

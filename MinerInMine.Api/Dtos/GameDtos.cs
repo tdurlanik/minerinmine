@@ -69,6 +69,9 @@ public class FacilityDto
     /// <summary>Devam eden bir gelistirme varsa bitis ani, yoksa null.</summary>
     public DateTime? UpgradeCompletesAt { get; set; }
     public DateTime LastCollectedAt { get; set; }
+
+    /// <summary>Madencilerin bu tesiste saniyede urettigi miktar (guclendirmeler dahil).</summary>
+    public decimal AutoPerSecond { get; set; }
 }
 
 public class ClickTypeDto
@@ -102,6 +105,10 @@ public class PlayerStateDto
 
     /// <summary>Bu istek sirasinda suresi dolup tamamlanan gelistirme sayisi (tembel tamamlama).</summary>
     public int CompletedUpgrades { get; set; }
+
+    public List<MinerDto> Miners { get; set; } = new();
+    public List<UpgradeDto> Upgrades { get; set; } = new();
+    public List<PendingProductionDto> Pending { get; set; } = new();
 }
 
 /// <summary>Gelistirme baslatma sonucu.</summary>
@@ -124,5 +131,102 @@ public class UpgradeFinishedDto
 
     /// <summary>Odeme ile atlanan sure — "3 dakika kazandin" bildirimi icin.</summary>
     public int SkippedSeconds { get; set; }
+    public DateTime ServerTime { get; set; }
+}
+
+// ============================================================================
+// GUN 4: Otomasyon ve ekonomi
+// ============================================================================
+
+/// <summary>Bir tesiste bir madenci kademesinin durumu.</summary>
+public class MinerDto
+{
+    public int FacilityTypeId { get; set; }
+    public int MinerTypeId { get; set; }
+    public string Code { get; set; } = string.Empty;
+    public string Name { get; set; } = string.Empty;
+    public long HireCost { get; set; }
+    public int MaxCount { get; set; }
+    public string ClickCode { get; set; } = string.Empty;
+    public string ClickName { get; set; } = string.Empty;
+    public int Count { get; set; }
+
+    /// <summary>Bu madencinin kullandigi kazma turu acilmis mi? Degilse ise alinamaz.</summary>
+    public bool IsAvailable { get; set; }
+
+    /// <summary>Tek bir madencinin saniyelik uretimi (mevcut tesis seviyesinde).</summary>
+    public decimal PerSecondEach { get; set; }
+}
+
+public class UpgradeDto
+{
+    public int UpgradeTypeId { get; set; }
+    public string Code { get; set; } = string.Empty;
+    public string Name { get; set; } = string.Empty;
+    public string? Description { get; set; }
+    public string EffectType { get; set; } = string.Empty;
+    public decimal EffectValue { get; set; }
+    public int MaxLevel { get; set; }
+    public int Level { get; set; }
+    public long? NextLevelCost { get; set; }
+}
+
+/// <summary>Henuz toplanmamis, madencilerin urettigi kaynak.</summary>
+public class PendingProductionDto
+{
+    public int ResourceTypeId { get; set; }
+    public string Code { get; set; } = string.Empty;
+    public string Name { get; set; } = string.Empty;
+    public long Amount { get; set; }
+}
+
+public class CollectedResourceDto
+{
+    public string Code { get; set; } = string.Empty;
+    public string Name { get; set; } = string.Empty;
+    public long Amount { get; set; }
+    public long NewBalance { get; set; }
+}
+
+public class HireMinerResultDto
+{
+    public int NewCount { get; set; }
+    public long Cost { get; set; }
+    public long NewBalance { get; set; }
+    public DateTime ServerTime { get; set; }
+}
+
+/// <summary>Satis istegi. Miktar istemciden gelir ama sunucu bakiyeyi dogrular.</summary>
+public class SellRequest
+{
+    [Required]
+    public int ResourceTypeId { get; set; }
+
+    [Required]
+    [Range(1, long.MaxValue, ErrorMessage = "Satış miktarı en az 1 olmalıdır.")]
+    public long Amount { get; set; }
+}
+
+public class SellResultDto
+{
+    public long SoldAmount { get; set; }
+    public long Earned { get; set; }
+    public long KristalBalance { get; set; }
+    public long ResourceBalance { get; set; }
+    public DateTime ServerTime { get; set; }
+}
+
+public class PurchaseResultDto
+{
+    public int NewLevel { get; set; }
+    public long Cost { get; set; }
+    public long NewBalance { get; set; }
+    public DateTime ServerTime { get; set; }
+}
+
+public class UnlockResultDto
+{
+    public long Cost { get; set; }
+    public long NewBalance { get; set; }
     public DateTime ServerTime { get; set; }
 }

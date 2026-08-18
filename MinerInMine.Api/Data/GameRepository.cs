@@ -8,6 +8,10 @@ namespace MinerInMine.Api.Data;
 public record MineDbResult(int ReturnCode, string? ErrorMessage, MineResultDto? Data);
 public record UpgradeStartDbResult(int ReturnCode, string? ErrorMessage, UpgradeStartedDto? Data);
 public record UpgradeFinishDbResult(int ReturnCode, string? ErrorMessage, UpgradeFinishedDto? Data);
+public record HireDbResult(int ReturnCode, string? ErrorMessage, HireMinerResultDto? Data);
+public record SellDbResult(int ReturnCode, string? ErrorMessage, SellResultDto? Data);
+public record PurchaseDbResult(int ReturnCode, string? ErrorMessage, PurchaseResultDto? Data);
+public record UnlockDbResult(int ReturnCode, string? ErrorMessage, UnlockResultDto? Data);
 
 /// <summary>sp_GetPlayerState son sonuc kumesi: sunucu saati + tamamlanan gelistirme sayisi.</summary>
 internal record StateTailRow(DateTime ServerTime, int CompletedUpgrades);
@@ -18,6 +22,11 @@ public interface IGameRepository
     Task<MineDbResult> MineAsync(int userId, int facilityTypeId, int clickTypeId);
     Task<UpgradeStartDbResult> StartUpgradeAsync(int userId, int facilityTypeId);
     Task<UpgradeFinishDbResult> FinishUpgradeNowAsync(int userId, int facilityTypeId);
+    Task<List<CollectedResourceDto>> CollectAsync(int userId);
+    Task<HireDbResult> HireMinerAsync(int userId, int facilityTypeId, int minerTypeId);
+    Task<SellDbResult> SellAsync(int userId, int resourceTypeId, long amount);
+    Task<PurchaseDbResult> BuyUpgradeAsync(int userId, int upgradeTypeId);
+    Task<UnlockDbResult> UnlockClickAsync(int userId, int clickTypeId);
 }
 
 /// <summary>
@@ -52,6 +61,9 @@ public class GameRepository : IGameRepository
         var facilities = (await multi.ReadAsync<FacilityDto>()).ToList();
         var clickTypes = (await multi.ReadAsync<ClickTypeDto>()).ToList();
         var facilityClicks = (await multi.ReadAsync<FacilityClickDto>()).ToList();
+        var miners = (await multi.ReadAsync<MinerDto>()).ToList();
+        var upgrades = (await multi.ReadAsync<UpgradeDto>()).ToList();
+        var pending = (await multi.ReadAsync<PendingProductionDto>()).ToList();
         var tail = await multi.ReadSingleAsync<StateTailRow>();
 
         return new PlayerStateDto
@@ -60,6 +72,9 @@ public class GameRepository : IGameRepository
             Facilities = facilities,
             ClickTypes = clickTypes,
             FacilityClicks = facilityClicks,
+            Miners = miners,
+            Upgrades = upgrades,
+            Pending = pending,
             // Son sonuc kumesi artik iki sutun donduruyor (ServerTime + CompletedUpgrades),
             // bu yuzden duz DateTime yerine kucuk bir kayit tipine okuyoruz.
             ServerTime = tail.ServerTime,
@@ -137,5 +152,89 @@ public class GameRepository : IGameRepository
 
         return new UpgradeFinishDbResult(
             p.Get<int>("@ReturnValue"), p.Get<string?>("@ErrorMessage"), data);
+    }
+
+    /// <summary>
+    /// Birikmis uretimi toplar. Hesap tamamen SP icinde; istemci miktar gonderemez.
+    /// Bu SP hata kodu dondurmez, dogrudan toplanan kaynaklarin listesini verir.
+    /// </summary>
+    public async Task<List<CollectedResourceDto>> CollectAsync(int userId)
+    {
+        using var connection = _factory.CreateConnection();
+
+        var p = new DynamicParameters();
+        p.Add("@UserId", userId, DbType.Int32);
+        p.Add("@ErrorMessage", dbType: DbType.String, size: 255, direction: ParameterDirection.Output);
+
+        var rows = await connection.QueryAsync<CollectedResourceDto>(
+            "sp_CollectProduction", p, commandType: CommandType.StoredProcedure);
+
+        return rows.ToList();
+    }
+
+    public async Task<HireDbResult> HireMinerAsync(int userId, int facilityTypeId, int minerTypeId)
+    {
+        using var connection = _factory.CreateConnection();
+
+        var p = new DynamicParameters();
+        p.Add("@UserId", userId, DbType.Int32);
+        p.Add("@FacilityTypeId", facilityTypeId, DbType.Int32);
+        p.Add("@MinerTypeId", minerTypeId, DbType.Int32);
+        p.Add("@ErrorMessage", dbType: DbType.String, size: 255, direction: ParameterDirection.Output);
+        p.Add("@ReturnValue", dbType: DbType.Int32, direction: ParameterDirection.ReturnValue);
+
+        var data = await connection.QuerySingleOrDefaultAsync<HireMinerResultDto>(
+            "sp_HireMiner", p, commandType: CommandType.StoredProcedure);
+
+        return new HireDbResult(p.Get<int>("@ReturnValue"), p.Get<string?>("@ErrorMessage"), data);
+    }
+
+    public async Task<SellDbResult> SellAsync(int userId, int resourceTypeId, long amount)
+    {
+        using var connection = _factory.CreateConnection();
+
+        var p = new DynamicParameters();
+        p.Add("@UserId", userId, DbType.Int32);
+        p.Add("@ResourceTypeId", resourceTypeId, DbType.Int32);
+        p.Add("@Amount", amount, DbType.Int64);
+        p.Add("@ErrorMessage", dbType: DbType.String, size: 255, direction: ParameterDirection.Output);
+        p.Add("@ReturnValue", dbType: DbType.Int32, direction: ParameterDirection.ReturnValue);
+
+        var data = await connection.QuerySingleOrDefaultAsync<SellResultDto>(
+            "sp_SellResource", p, commandType: CommandType.StoredProcedure);
+
+        return new SellDbResult(p.Get<int>("@ReturnValue"), p.Get<string?>("@ErrorMessage"), data);
+    }
+
+    public async Task<PurchaseDbResult> BuyUpgradeAsync(int userId, int upgradeTypeId)
+    {
+        using var connection = _factory.CreateConnection();
+
+        var p = new DynamicParameters();
+        p.Add("@UserId", userId, DbType.Int32);
+        p.Add("@UpgradeTypeId", upgradeTypeId, DbType.Int32);
+        p.Add("@ErrorMessage", dbType: DbType.String, size: 255, direction: ParameterDirection.Output);
+        p.Add("@ReturnValue", dbType: DbType.Int32, direction: ParameterDirection.ReturnValue);
+
+        var data = await connection.QuerySingleOrDefaultAsync<PurchaseResultDto>(
+            "sp_BuyUpgrade", p, commandType: CommandType.StoredProcedure);
+
+        return new PurchaseDbResult(p.Get<int>("@ReturnValue"), p.Get<string?>("@ErrorMessage"), data);
+    }
+
+    public async Task<UnlockDbResult> UnlockClickAsync(int userId, int clickTypeId)
+    {
+        using var connection = _factory.CreateConnection();
+
+        var p = new DynamicParameters();
+        p.Add("@UserId", userId, DbType.Int32);
+        p.Add("@ClickTypeId", clickTypeId, DbType.Int32);
+        p.Add("@ErrorMessage", dbType: DbType.String, size: 255, direction: ParameterDirection.Output);
+        p.Add("@ReturnValue", dbType: DbType.Int32, direction: ParameterDirection.ReturnValue);
+
+        var data = await connection.QuerySingleOrDefaultAsync<UnlockResultDto>(
+            "sp_UnlockClickType", p, commandType: CommandType.StoredProcedure);
+
+        return new UnlockDbResult(p.Get<int>("@ReturnValue"), p.Get<string?>("@ErrorMessage"), data);
     }
 }

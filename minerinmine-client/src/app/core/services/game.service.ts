@@ -3,10 +3,16 @@ import { Injectable, computed, inject, signal } from '@angular/core';
 import { Observable, tap } from 'rxjs';
 import { environment } from '../../../environments/environment';
 import {
+  CollectedResource,
   Facility,
+  HireMinerResult,
   MineRequest,
   MineResult,
   PlayerState,
+  PurchaseResult,
+  SellRequest,
+  SellResult,
+  UnlockResult,
   UpgradeFinished,
   UpgradeStarted
 } from '../models/game.models';
@@ -54,6 +60,78 @@ export class GameService {
 
   /** Yalnizca acilmis kazma turleri — butonlar bunlardan cizilir. */
   readonly unlockedClicks = computed(() => this.clickTypes().filter((c) => c.isUnlocked));
+
+  readonly miners = computed(() => this._state()?.miners ?? []);
+  readonly upgrades = computed(() => this._state()?.upgrades ?? []);
+  readonly pending = computed(() => this._state()?.pending ?? []);
+
+  /** Toplam saniyelik otomatik uretim — ust seritte gosterilir. */
+  readonly totalPerSecond = computed(() =>
+    this.facilities().reduce((toplam, f) => toplam + Number(f.autoPerSecond ?? 0), 0)
+  );
+
+  /**
+   * BEKLEYEN URETIM TAHMINI (yalnizca goruntuleme icin).
+   *
+   * Sunucudan gelen `pending` degeri, durumun cekildigi ANA aittir; oyuncu
+   * ekranda beklerken artmaz. Saniyede bir sunucuya sormak ise gereksiz trafik
+   * olurdu. Bunun yerine ayni formulu istemcide calistirip sayacin akmasini
+   * sagliyoruz:
+   *
+   *     tahmin = autoPerSecond x (simdi - lastCollectedAt)
+   *
+   * DIKKAT: Bu sayi HICBIR ZAMAN otorite degildir. "Topla" butonuna
+   * basildiginda sunucu kendi hesabini yapar ve gercek miktari o belirler.
+   * Istemci yalnizca butonu ne zaman aktif edecegini ve ekranda ne
+   * gosterecegini bilmek icin tahmin yurutur.
+   */
+  readonly estimatedPending = computed(() => {
+    const state = this._state();
+    if (!state) {
+      return [] as { code: string; name: string; amount: number }[];
+    }
+
+    // Sunucudaki OFFLINE_CAP_HOURS ayarinin ekran karsiligi.
+    const tavanMs = 8 * 3600 * 1000;
+    const toplam = new Map<string, { code: string; name: string; amount: number }>();
+
+    for (const tesis of state.facilities) {
+      const hiz = Number(tesis.autoPerSecond ?? 0);
+      if (hiz <= 0) {
+        continue;
+      }
+
+      let gecen = this.serverNow() - this.toEpoch(tesis.lastCollectedAt);
+      if (gecen < 0) gecen = 0;
+      if (gecen > tavanMs) gecen = tavanMs;
+
+      const miktar = Math.floor((hiz * gecen) / 1000);
+      if (miktar <= 0) {
+        continue;
+      }
+
+      const mevcut = toplam.get(tesis.resourceCode);
+      if (mevcut) {
+        mevcut.amount += miktar;
+      } else {
+        toplam.set(tesis.resourceCode, {
+          code: tesis.resourceCode,
+          name: tesis.resourceName,
+          amount: miktar
+        });
+      }
+    }
+
+    return [...toplam.values()];
+  });
+
+  /** Toplanmayi bekleyen bir sey var mi? (tahmine gore) */
+  readonly hasPending = computed(() => this.estimatedPending().some((p) => p.amount > 0));
+
+  /** Belirli bir tesise ait madenci kademeleri. */
+  minersOf(facilityTypeId: number) {
+    return this.miners().filter((m) => m.facilityTypeId === facilityTypeId);
+  }
 
   constructor() {
     // Tek bir zamanlayici tum geri sayimlari besler.
@@ -207,5 +285,43 @@ export class GameService {
     const yuzde = 100 - (kalanMs / toplamMs) * 100;
 
     return Math.max(0, Math.min(100, yuzde));
+  }
+
+  // ==========================================================================
+  // OTOMASYON VE EKONOMI
+  // ==========================================================================
+
+  /**
+   * Birikmis uretimi toplar.
+   *
+   * Miktar GONDERILMEZ; sunucu "simdi - son toplama" suresinden hesaplar.
+   * Es zamanli iki istek gelse bile uretim yalnizca bir kez eklenir.
+   */
+  collect(): Observable<CollectedResource[]> {
+    return this.http.post<CollectedResource[]>(`${this.apiUrl}/collect`, {});
+  }
+
+  hireMiner(facilityTypeId: number, minerTypeId: number): Observable<HireMinerResult> {
+    return this.http
+      .post<HireMinerResult>(`${this.apiUrl}/facility/${facilityTypeId}/miner/${minerTypeId}`, {})
+      .pipe(tap((r) => this.syncClock(r.serverTime)));
+  }
+
+  sell(request: SellRequest): Observable<SellResult> {
+    return this.http
+      .post<SellResult>(`${this.apiUrl}/sell`, request)
+      .pipe(tap((r) => this.syncClock(r.serverTime)));
+  }
+
+  buyUpgrade(upgradeTypeId: number): Observable<PurchaseResult> {
+    return this.http
+      .post<PurchaseResult>(`${this.apiUrl}/upgrade/${upgradeTypeId}`, {})
+      .pipe(tap((r) => this.syncClock(r.serverTime)));
+  }
+
+  unlockClick(clickTypeId: number): Observable<UnlockResult> {
+    return this.http
+      .post<UnlockResult>(`${this.apiUrl}/click/${clickTypeId}/unlock`, {})
+      .pipe(tap((r) => this.syncClock(r.serverTime)));
   }
 }

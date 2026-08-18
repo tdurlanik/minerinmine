@@ -31,6 +31,9 @@ export interface Facility {
   instantFinishCost: number | null;
   upgradeCompletesAt: string | null;
   lastCollectedAt: string;
+
+  /** Madencilerin bu tesiste saniyede urettigi miktar (guclendirmeler dahil). */
+  autoPerSecond: number;
 }
 
 export interface ClickType {
@@ -59,6 +62,87 @@ export interface PlayerState {
 
   /** Bu istek sirasinda suresi dolup tamamlanan gelistirme sayisi (tembel tamamlama). */
   completedUpgrades: number;
+
+  miners: Miner[];
+  upgrades: Upgrade[];
+
+  /** Henuz toplanmamis, madencilerin urettigi kaynaklar. */
+  pending: PendingProduction[];
+}
+
+export interface Miner {
+  facilityTypeId: number;
+  minerTypeId: number;
+  code: string;
+  name: string;
+  hireCost: number;
+  maxCount: number;
+  clickCode: string;
+  clickName: string;
+  count: number;
+
+  /** Kullandigi kazma turu acilmamissa ise alinamaz. */
+  isAvailable: boolean;
+  perSecondEach: number;
+}
+
+export interface Upgrade {
+  upgradeTypeId: number;
+  code: string;
+  name: string;
+  description: string | null;
+  effectType: string;
+  effectValue: number;
+  maxLevel: number;
+  level: number;
+  nextLevelCost: number | null;
+}
+
+export interface PendingProduction {
+  resourceTypeId: number;
+  code: string;
+  name: string;
+  amount: number;
+}
+
+export interface CollectedResource {
+  code: string;
+  name: string;
+  amount: number;
+  newBalance: number;
+}
+
+export interface HireMinerResult {
+  newCount: number;
+  cost: number;
+  newBalance: number;
+  serverTime: string;
+}
+
+export interface SellRequest {
+  resourceTypeId: number;
+  amount: number;
+}
+
+export interface SellResult {
+  soldAmount: number;
+  earned: number;
+  kristalBalance: number;
+  resourceBalance: number;
+  serverTime: string;
+}
+
+export interface PurchaseResult {
+  newLevel: number;
+  cost: number;
+  newBalance: number;
+  serverTime: string;
+}
+
+export interface UnlockResult {
+  cost: number;
+  newBalance: number;
+  serverTime: string;
 }
 
 /** Sadece "nerede, neyle kazdim" — miktar yok. */

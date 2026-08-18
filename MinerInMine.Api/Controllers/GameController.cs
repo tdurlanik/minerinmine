@@ -117,4 +117,72 @@ public class GameController : ControllerBase
             ? Ok(result.Data)
             : BadRequest(new { message = result.ErrorMessage });
     }
+
+    /// <summary>Madencilerin birikmis uretimini toplar (offline kazanc dahil).</summary>
+    /// <remarks>
+    /// Miktar istekte gonderilmez; sunucu "simdi - son toplama" suresinden hesaplar.
+    /// Es zamanli iki istek gelse bile uretim yalnizca bir kez eklenir.
+    /// </remarks>
+    [HttpPost("collect")]
+    [ProducesResponseType(typeof(List<CollectedResourceDto>), StatusCodes.Status200OK)]
+    public async Task<IActionResult> Collect()
+    {
+        var userId = User.GetUserId();
+        if (userId is null) return Unauthorized(new { message = "Geçersiz token." });
+
+        return Ok(await _gameService.CollectAsync(userId.Value));
+    }
+
+    /// <summary>Bir tesise madenci alir. Kademe, otomatiklestirdigi kazma turuyle eslesir.</summary>
+    [HttpPost("facility/{facilityTypeId:int}/miner/{minerTypeId:int}")]
+    [ProducesResponseType(typeof(HireMinerResultDto), StatusCodes.Status200OK)]
+    [ProducesResponseType(StatusCodes.Status400BadRequest)]
+    public async Task<IActionResult> HireMiner(int facilityTypeId, int minerTypeId)
+    {
+        var userId = User.GetUserId();
+        if (userId is null) return Unauthorized(new { message = "Geçersiz token." });
+
+        var r = await _gameService.HireMinerAsync(userId.Value, facilityTypeId, minerTypeId);
+        return r.Success ? Ok(r.Data) : BadRequest(new { message = r.ErrorMessage });
+    }
+
+    /// <summary>Maden satar, karsiliginda Kristal kazandirir.</summary>
+    /// <remarks>Miktar istemciden gelir ama sunucu bakiyeyi dogrular; Kristal satilamaz.</remarks>
+    [HttpPost("sell")]
+    [ProducesResponseType(typeof(SellResultDto), StatusCodes.Status200OK)]
+    [ProducesResponseType(StatusCodes.Status400BadRequest)]
+    public async Task<IActionResult> Sell([FromBody] SellRequest request)
+    {
+        var userId = User.GetUserId();
+        if (userId is null) return Unauthorized(new { message = "Geçersiz token." });
+
+        var r = await _gameService.SellAsync(userId.Value, request);
+        return r.Success ? Ok(r.Data) : BadRequest(new { message = r.ErrorMessage });
+    }
+
+    /// <summary>Kalici guclendirme satin alir.</summary>
+    [HttpPost("upgrade/{upgradeTypeId:int}")]
+    [ProducesResponseType(typeof(PurchaseResultDto), StatusCodes.Status200OK)]
+    [ProducesResponseType(StatusCodes.Status400BadRequest)]
+    public async Task<IActionResult> BuyUpgrade(int upgradeTypeId)
+    {
+        var userId = User.GetUserId();
+        if (userId is null) return Unauthorized(new { message = "Geçersiz token." });
+
+        var r = await _gameService.BuyUpgradeAsync(userId.Value, upgradeTypeId);
+        return r.Success ? Ok(r.Data) : BadRequest(new { message = r.ErrorMessage });
+    }
+
+    /// <summary>Yeni kazma turu acar.</summary>
+    [HttpPost("click/{clickTypeId:int}/unlock")]
+    [ProducesResponseType(typeof(UnlockResultDto), StatusCodes.Status200OK)]
+    [ProducesResponseType(StatusCodes.Status400BadRequest)]
+    public async Task<IActionResult> UnlockClick(int clickTypeId)
+    {
+        var userId = User.GetUserId();
+        if (userId is null) return Unauthorized(new { message = "Geçersiz token." });
+
+        var r = await _gameService.UnlockClickAsync(userId.Value, clickTypeId);
+        return r.Success ? Ok(r.Data) : BadRequest(new { message = r.ErrorMessage });
+    }
 }

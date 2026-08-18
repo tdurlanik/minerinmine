@@ -380,3 +380,238 @@
   /* Genislik saniyede dort kez guncelleniyor; gecis bunu akici gosterir */
   transition: width 250ms linear;
 }
+
+/* ==========================================================================
+   GUN 4: OTOMASYON VE EKONOMI
+   ========================================================================== */
+
+/* Ust seritteki otomatik uretim gostergesi */
+.oto {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  padding: 6px 14px;
+  border-radius: var(--radius-sm);
+  background: rgba(61, 220, 151, 0.1);
+  border: 1px solid rgba(61, 220, 151, 0.3);
+}
+
+.oto__ad {
+  font-size: 10px;
+  letter-spacing: 0.6px;
+  color: var(--metin-silik);
+}
+
+.oto__deger {
+  font-size: 15px;
+  font-weight: 700;
+  color: var(--zumrut);
+  font-variant-numeric: tabular-nums;
+}
+
+/* --- Birikmis uretim karti --- */
+.uretim {
+  background: linear-gradient(180deg, var(--kaya-acik), var(--kaya));
+  border: 1px solid var(--kaya-kenar);
+  border-left: 3px solid var(--zumrut);
+  border-radius: var(--radius);
+  padding: 16px 20px;
+}
+
+.uretim__ust {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 14px;
+  flex-wrap: wrap;
+}
+
+.uretim__baslik {
+  margin: 0;
+  font-size: 16px;
+  font-weight: 700;
+}
+
+.uretim__bilgi {
+  margin: 4px 0 0;
+  font-size: 13px;
+  color: var(--metin-soluk);
+}
+
+.uretim__bilgi strong {
+  color: var(--zumrut);
+}
+
+.uretim__buton {
+  width: auto;
+  padding: 10px 22px;
+  white-space: nowrap;
+}
+
+.uretim__not {
+  margin: 10px 0 0;
+  font-size: 12px;
+  color: var(--metin-silik);
+}
+
+/* --- Madenci satirlari --- */
+.madenciler {
+  margin-top: 14px;
+  padding-top: 12px;
+  border-top: 1px solid var(--kaya-kenar);
+  display: flex;
+  flex-direction: column;
+  gap: 7px;
+}
+
+.madenci {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 12px;
+  padding: 8px 12px;
+  background: var(--kaya-derin);
+  border: 1px solid var(--kaya-kenar);
+  border-radius: var(--radius-sm);
+}
+
+.madenci--kilitli {
+  opacity: 0.55;
+}
+
+.madenci__sol {
+  display: flex;
+  flex-direction: column;
+  gap: 2px;
+  min-width: 0;
+}
+
+.madenci__ad {
+  font-size: 13.5px;
+  font-weight: 600;
+}
+
+.madenci__bilgi {
+  font-size: 12px;
+  color: var(--metin-silik);
+}
+
+.madenci__buton,
+.urun__buton,
+.satis__buton {
+  padding: 7px 14px;
+  font-size: 13px;
+  font-weight: 700;
+  font-family: inherit;
+  color: #1a1200;
+  background: linear-gradient(180deg, var(--altin-parlak), var(--altin-koyu));
+  border: none;
+  border-radius: var(--radius-sm);
+  cursor: pointer;
+  white-space: nowrap;
+  transition: filter var(--gecis), opacity var(--gecis);
+}
+
+.madenci__buton:hover:not(:disabled),
+.urun__buton:hover:not(:disabled),
+.satis__buton:hover:not(:disabled) {
+  filter: brightness(1.08);
+}
+
+.madenci__buton:disabled,
+.urun__buton:disabled,
+.satis__buton:disabled {
+  opacity: 0.4;
+  cursor: not-allowed;
+}
+
+/* --- Dukkan bolumleri --- */
+.dukkan {
+  background: linear-gradient(180deg, var(--kaya-acik), var(--kaya));
+  border: 1px solid var(--kaya-kenar);
+  border-radius: var(--radius);
+  padding: 16px 20px;
+}
+
+.dukkan__baslik {
+  margin: 0 0 4px;
+  font-size: 15px;
+  font-weight: 700;
+}
+
+.dukkan__aciklama {
+  margin: 0 0 12px;
+  font-size: 12.5px;
+  color: var(--metin-silik);
+}
+
+.urun,
+.satis {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 12px;
+  padding: 9px 0;
+  border-top: 1px solid var(--kaya-kenar);
+}
+
+.urun__sol {
+  display: flex;
+  flex-direction: column;
+  gap: 2px;
+  min-width: 0;
+}
+
+.urun__ad {
+  font-size: 13.5px;
+  font-weight: 600;
+}
+
+.urun__sv {
+  font-size: 12px;
+  font-weight: 400;
+  color: var(--metin-silik);
+}
+
+.urun__bilgi {
+  font-size: 12px;
+  color: var(--metin-silik);
+}
+
+/* --- Satis satiri --- */
+.satis__ad {
+  display: flex;
+  flex-direction: column;
+  font-size: 13.5px;
+  font-weight: 600;
+  flex: 1;
+  min-width: 0;
+}
+
+.satis__birim {
+  font-size: 12px;
+  font-weight: 400;
+  color: var(--metin-silik);
+}
+
+.satis__giris {
+  width: 110px;
+  padding: 7px 9px;
+  font-family: inherit;
+  font-size: 13px;
+  color: var(--metin);
+  background: var(--kaya-derin);
+  border: 1px solid var(--kaya-kenar);
+  border-radius: var(--radius-sm);
+}
+
+.satis__giris:focus {
+  outline: none;
+  border-color: var(--altin);
+}
+
+@media (max-width: 560px) {
+  .uretim__ust { flex-direction: column; align-items: stretch; }
+  .uretim__buton { width: 100%; }
+  .satis__giris { width: 80px; }
+}

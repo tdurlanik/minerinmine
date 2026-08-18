@@ -9,6 +9,11 @@ public interface IGameService
     Task<ServiceResult<MineResultDto>> MineAsync(int userId, MineRequest request);
     Task<ServiceResult<UpgradeStartedDto>> StartUpgradeAsync(int userId, int facilityTypeId);
     Task<ServiceResult<UpgradeFinishedDto>> FinishUpgradeNowAsync(int userId, int facilityTypeId);
+    Task<List<CollectedResourceDto>> CollectAsync(int userId);
+    Task<ServiceResult<HireMinerResultDto>> HireMinerAsync(int userId, int facilityTypeId, int minerTypeId);
+    Task<ServiceResult<SellResultDto>> SellAsync(int userId, SellRequest request);
+    Task<ServiceResult<PurchaseResultDto>> BuyUpgradeAsync(int userId, int upgradeTypeId);
+    Task<ServiceResult<UnlockResultDto>> UnlockClickAsync(int userId, int clickTypeId);
 }
 
 /// <summary>
@@ -119,5 +124,82 @@ public class GameService : IGameService
             userId, facilityTypeId, result.ReturnCode, result.ErrorMessage);
 
         return ServiceResult<UpgradeFinishedDto>.Fail("İşlem sırasında beklenmeyen bir hata oluştu.");
+    }
+
+    /// <summary>
+    /// Birikmis uretimi toplar. Hata durumu yoktur: toplanacak bir sey yoksa
+    /// bos liste doner. Bu yuzden ServiceResult sarmalayicisina gerek duymuyoruz.
+    /// </summary>
+    public Task<List<CollectedResourceDto>> CollectAsync(int userId) => _repository.CollectAsync(userId);
+
+    /// <summary>
+    /// Madenci ise alir.
+    ///
+    /// SIRA ONEMLI: Once birikmis uretim toplanir. Aksi halde yeni madenci,
+    /// henuz calismadigi gecmis sure icin de uretmis gibi sayilirdi.
+    /// Bu sirayi burada kuruyoruz; SP icinden cagirsaydik SP birden fazla
+    /// sonuc kumesi dondururdu ve erken hata durumlarinda okuma karisirdi.
+    /// </summary>
+    public async Task<ServiceResult<HireMinerResultDto>> HireMinerAsync(int userId, int facilityTypeId, int minerTypeId)
+    {
+        await _repository.CollectAsync(userId);
+
+        var r = await _repository.HireMinerAsync(userId, facilityTypeId, minerTypeId);
+        return Yorumla(r.ReturnCode, r.ErrorMessage, r.Data, "Madenci işe alınamadı.", userId, "sp_HireMiner");
+    }
+
+    public async Task<ServiceResult<SellResultDto>> SellAsync(int userId, SellRequest request)
+    {
+        var r = await _repository.SellAsync(userId, request.ResourceTypeId, request.Amount);
+        return Yorumla(r.ReturnCode, r.ErrorMessage, r.Data, "Satış yapılamadı.", userId, "sp_SellResource");
+    }
+
+    /// <summary>
+    /// Kalici guclendirme alir.
+    ///
+    /// MINER_SPEED guclendirmesi uretim hizini degistirdigi icin, satin almadan
+    /// once birikmis uretim ESKI hizla toplanir. Aksi halde gecmiste biriken
+    /// uretim yeni (daha yuksek) hizla hesaplanir ve oyuncu haksiz kazanc elde ederdi.
+    /// </summary>
+    public async Task<ServiceResult<PurchaseResultDto>> BuyUpgradeAsync(int userId, int upgradeTypeId)
+    {
+        await _repository.CollectAsync(userId);
+
+        var r = await _repository.BuyUpgradeAsync(userId, upgradeTypeId);
+        return Yorumla(r.ReturnCode, r.ErrorMessage, r.Data, "Güçlendirme alınamadı.", userId, "sp_BuyUpgrade");
+    }
+
+    public async Task<ServiceResult<UnlockResultDto>> UnlockClickAsync(int userId, int clickTypeId)
+    {
+        var r = await _repository.UnlockClickAsync(userId, clickTypeId);
+        return Yorumla(r.ReturnCode, r.ErrorMessage, r.Data, "Kazma türü açılamadı.", userId, "sp_UnlockClickType");
+    }
+
+    /// <summary>
+    /// SP RETURN kodlarini ServiceResult'a ceviren ortak yardimci.
+    ///
+    /// Kural: 0 = basarili, -1..-9 = beklenen is kurali hatasi (kullaniciya
+    /// SP'nin mesaji gosterilir), digerleri = beklenmeyen hata (loglanir ve
+    /// kullaniciya genel mesaj verilir; ic detay sizdirilmaz).
+    ///
+    /// Bu mantik dort metotta da ayni oldugu icin tek yere alindi.
+    /// </summary>
+    private ServiceResult<T> Yorumla<T>(
+        int returnCode, string? errorMessage, T? data, string varsayilan, int userId, string spAdi)
+    {
+        if (returnCode == 0 && data is not null)
+        {
+            return ServiceResult<T>.Ok(data);
+        }
+
+        if (returnCode < 0 && returnCode >= -9)
+        {
+            return ServiceResult<T>.Fail(errorMessage ?? varsayilan);
+        }
+
+        _logger.LogError("{Sp} beklenmeyen sonuc. UserId={UserId} RC={RC} Hata={Error}",
+            spAdi, userId, returnCode, errorMessage);
+
+        return ServiceResult<T>.Fail("İşlem sırasında beklenmeyen bir hata oluştu.");
     }
 }

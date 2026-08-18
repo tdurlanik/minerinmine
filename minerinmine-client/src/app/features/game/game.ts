@@ -1,7 +1,7 @@
 import { HttpErrorResponse } from '@angular/common/http';
 import { Component, OnInit, effect, inject, signal } from '@angular/core';
 import { Router, RouterLink } from '@angular/router';
-import { ClickType, Facility } from '../../core/models/game.models';
+import { ClickType, Facility, Miner, Upgrade } from '../../core/models/game.models';
 import { AuthService } from '../../core/services/auth.service';
 import { GameService } from '../../core/services/game.service';
 
@@ -28,6 +28,9 @@ export class GameComponent implements OnInit {
 
   /** Islem devam ederken butonlari kilitlemek icin (cift tiklama korumasi). */
   readonly islemdeki = signal<number | null>(null);
+
+  /** Satis panelinde secili kaynak ve miktar. */
+  readonly satisMiktari = signal<Record<number, number>>({});
 
   /** Son kazanc — tesisin yaninda kisa sure gorunen kazanc balonu icin. */
   readonly sonKazanc = signal<{ facilityTypeId: number; miktar: number; anahtar: number } | null>(null);
@@ -231,5 +234,136 @@ export class GameComponent implements OnInit {
   cikisYap(): void {
     this.auth.logout();
     this.router.navigateByUrl('/login');
+  }
+
+  // ==========================================================================
+  // OTOMASYON VE EKONOMI
+  // ==========================================================================
+
+  topla(): void {
+    this.hataMesaji.set(null);
+
+    this.game.collect().subscribe({
+      next: (kaynaklar) => {
+        if (kaynaklar.length === 0) {
+          this.bilgiMesaji.set('Toplanacak bir şey yok. Madenci alarak üretimi otomatikleştirebilirsin.');
+        } else {
+          this.bilgiMesaji.set(
+            'Toplandı: ' + kaynaklar.map((k) => '+' + this.bicimle(k.amount) + ' ' + k.name).join(', ')
+          );
+        }
+        this.durumuYenile();
+      },
+      error: (hata: HttpErrorResponse) => {
+        this.hataMesaji.set(this.hatayiCozumle(hata, 'Toplama başarısız.'));
+      }
+    });
+  }
+
+  madenciAl(madenci: Miner): void {
+    this.islemdeki.set(madenci.minerTypeId);
+    this.hataMesaji.set(null);
+    this.bilgiMesaji.set(null);
+
+    this.game.hireMiner(madenci.facilityTypeId, madenci.minerTypeId).subscribe({
+      next: (sonuc) => {
+        this.islemdeki.set(null);
+        this.bilgiMesaji.set(madenci.name + ' işe alındı. Toplam: ' + sonuc.newCount);
+        this.durumuYenile();
+      },
+      error: (hata: HttpErrorResponse) => {
+        this.islemdeki.set(null);
+        this.hataMesaji.set(this.hatayiCozumle(hata, 'Madenci işe alınamadı.'));
+        this.durumuYenile();
+      }
+    });
+  }
+
+  kazmaAc(kazma: ClickType): void {
+    this.islemdeki.set(kazma.clickTypeId);
+    this.hataMesaji.set(null);
+    this.bilgiMesaji.set(null);
+
+    this.game.unlockClick(kazma.clickTypeId).subscribe({
+      next: () => {
+        this.islemdeki.set(null);
+        this.bilgiMesaji.set(kazma.name + ' açıldı! Artık madencisini de işe alabilirsin.');
+        this.durumuYenile();
+      },
+      error: (hata: HttpErrorResponse) => {
+        this.islemdeki.set(null);
+        this.hataMesaji.set(this.hatayiCozumle(hata, 'Kazma türü açılamadı.'));
+        this.durumuYenile();
+      }
+    });
+  }
+
+  guclendirmeAl(guclendirme: Upgrade): void {
+    this.islemdeki.set(guclendirme.upgradeTypeId);
+    this.hataMesaji.set(null);
+    this.bilgiMesaji.set(null);
+
+    this.game.buyUpgrade(guclendirme.upgradeTypeId).subscribe({
+      next: (sonuc) => {
+        this.islemdeki.set(null);
+        this.bilgiMesaji.set(guclendirme.name + ' seviye ' + sonuc.newLevel + ' oldu.');
+        this.durumuYenile();
+      },
+      error: (hata: HttpErrorResponse) => {
+        this.islemdeki.set(null);
+        this.hataMesaji.set(this.hatayiCozumle(hata, 'Güçlendirme alınamadı.'));
+        this.durumuYenile();
+      }
+    });
+  }
+
+  sat(resourceTypeId: number, tumu: number): void {
+    const miktar = this.satisMiktari()[resourceTypeId] ?? tumu;
+    if (miktar <= 0) {
+      return;
+    }
+
+    this.islemdeki.set(resourceTypeId);
+    this.hataMesaji.set(null);
+    this.bilgiMesaji.set(null);
+
+    this.game.sell({ resourceTypeId, amount: miktar }).subscribe({
+      next: (sonuc) => {
+        this.islemdeki.set(null);
+        this.bilgiMesaji.set(
+          this.bicimle(sonuc.soldAmount) + ' satıldı, +' + this.bicimle(sonuc.earned) + ' Kristal.'
+        );
+        this.satisMiktari.set({});
+        this.durumuYenile();
+      },
+      error: (hata: HttpErrorResponse) => {
+        this.islemdeki.set(null);
+        this.hataMesaji.set(this.hatayiCozumle(hata, 'Satış yapılamadı.'));
+        this.durumuYenile();
+      }
+    });
+  }
+
+  miktarDegisti(resourceTypeId: number, olay: Event): void {
+    const deger = Number((olay.target as HTMLInputElement).value);
+    this.satisMiktari.update((m) => ({ ...m, [resourceTypeId]: deger }));
+  }
+
+  /** Satilabilir kaynaklar: para birimi olmayan ve elde bulunanlar. */
+  satilabilirler() {
+    return this.game.resources().filter((r) => !r.isCurrency && r.amount > 0);
+  }
+
+  /**
+   * Bekleyen uretimi ozet metne cevirir.
+   *
+   * Sunucudan gelen anlik degeri degil, istemcide akan TAHMINI kullaniyoruz ki
+   * sayac ekranda dursun degil aksin. Gercek miktar toplama aninda sunucudan gelir.
+   */
+  bekleyenMetin(): string {
+    return this.game.estimatedPending()
+      .filter((p) => p.amount > 0)
+      .map((p) => this.bicimle(p.amount) + ' ' + p.name)
+      .join(' · ');
   }
 }
