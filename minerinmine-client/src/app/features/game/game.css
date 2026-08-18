@@ -296,3 +296,87 @@
     animation: none;
   }
 }
+
+/* ==========================================================================
+   GELISTIRME BOLUMU
+   ========================================================================== */
+
+.gelistirme {
+  margin-top: 14px;
+  padding-top: 14px;
+  border-top: 1px solid var(--kaya-kenar);
+}
+
+.gelistirme__ozet {
+  display: flex;
+  justify-content: space-between;
+  gap: 12px;
+  flex-wrap: wrap;
+  font-size: 13px;
+  color: var(--metin-soluk);
+  margin-bottom: 10px;
+}
+
+.gelistirme__ozet strong {
+  color: var(--zumrut);
+}
+
+.gelistirme__sure {
+  color: var(--metin-silik);
+  white-space: nowrap;
+}
+
+.gelistirme__buton {
+  width: 100%;
+  padding: 10px;
+  font-size: 14px;
+}
+
+.gelistirme__son {
+  margin: 0;
+  text-align: center;
+  font-size: 13.5px;
+  color: var(--altin-parlak);
+}
+
+/* --- Devam eden calisma --- */
+.calisma__ust {
+  display: flex;
+  justify-content: space-between;
+  align-items: baseline;
+  gap: 12px;
+  margin-bottom: 8px;
+}
+
+.calisma__etiket {
+  font-size: 13px;
+  color: var(--metin-soluk);
+}
+
+.calisma__sayac {
+  font-size: 17px;
+  font-weight: 700;
+  color: var(--altin-parlak);
+
+  /* Rakamlar esit genislikte olsun ki sayac akarken metin titremesin */
+  font-variant-numeric: tabular-nums;
+}
+
+/* Ilerleme cubugu */
+.cubuk {
+  height: 7px;
+  background: var(--kaya-derin);
+  border: 1px solid var(--kaya-kenar);
+  border-radius: 999px;
+  overflow: hidden;
+  margin-bottom: 12px;
+}
+
+.cubuk__dolum {
+  display: block;
+  height: 100%;
+  background: linear-gradient(90deg, var(--bakir), var(--altin));
+
+  /* Genislik saniyede dort kez guncelleniyor; gecis bunu akici gosterir */
+  transition: width 250ms linear;
+}

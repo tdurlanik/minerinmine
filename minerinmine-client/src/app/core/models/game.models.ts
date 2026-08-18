@@ -25,6 +25,10 @@ export interface Facility {
   currentProduction: number;
   nextLevelCost: number | null;
   nextLevelMinutes: number | null;
+  nextLevelProduction: number | null;
+
+  /** Devam eden gelistirmeyi aninda bitirmenin O ANKI bedeli; gelistirme yoksa null. */
+  instantFinishCost: number | null;
   upgradeCompletesAt: string | null;
   lastCollectedAt: string;
 }
@@ -52,6 +56,9 @@ export interface PlayerState {
   clickTypes: ClickType[];
   facilityClicks: FacilityClick[];
   serverTime: string;
+
+  /** Bu istek sirasinda suresi dolup tamamlanan gelistirme sayisi (tembel tamamlama). */
+  completedUpgrades: number;
 }
 
 /** Sadece "nerede, neyle kazdim" — miktar yok. */
@@ -65,5 +72,24 @@ export interface MineResult {
   newBalance: number;
   resourceTypeId: number;
   nextAvailableAt: string;
+  serverTime: string;
+}
+
+/** Gelistirme baslatma sonucu. */
+export interface UpgradeStarted {
+  targetLevel: number;
+  cost: number;
+  newBalance: number;
+  durationMinutes: number;
+  upgradeCompletesAt: string;
+  serverTime: string;
+}
+
+/** Aninda bitirme sonucu. */
+export interface UpgradeFinished {
+  newLevel: number;
+  cost: number;
+  newBalance: number;
+  skippedSeconds: number;
   serverTime: string;
 }

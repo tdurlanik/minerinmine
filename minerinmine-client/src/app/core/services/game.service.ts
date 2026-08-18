@@ -2,7 +2,14 @@ import { HttpClient } from '@angular/common/http';
 import { Injectable, computed, inject, signal } from '@angular/core';
 import { Observable, tap } from 'rxjs';
 import { environment } from '../../../environments/environment';
-import { MineRequest, MineResult, PlayerState } from '../models/game.models';
+import {
+  Facility,
+  MineRequest,
+  MineResult,
+  PlayerState,
+  UpgradeFinished,
+  UpgradeStarted
+} from '../models/game.models';
 
 /**
  * Oyun durumunu tutan ve API ile konusan servis.
@@ -138,5 +145,67 @@ export class GameService {
         )
       };
     });
+  }
+
+  // ==========================================================================
+  // TESIS GELISTIRME
+  // ==========================================================================
+
+  /**
+   * Gelistirme baslatir.
+   *
+   * Maliyet ve sure GONDERILMEZ; sunucu denge tablosundan okur. Istemcinin
+   * ekranda gosterdigi fiyat sadece bilgilendirmedir, karar sunucunundur.
+   */
+  startUpgrade(facilityTypeId: number): Observable<UpgradeStarted> {
+    return this.http
+      .post<UpgradeStarted>(`${this.apiUrl}/facility/${facilityTypeId}/upgrade`, {})
+      .pipe(tap((r) => this.syncClock(r.serverTime)));
+  }
+
+  /** Devam eden gelistirmeyi Kristal odeyerek aninda bitirir. */
+  finishUpgradeNow(facilityTypeId: number): Observable<UpgradeFinished> {
+    return this.http
+      .post<UpgradeFinished>(`${this.apiUrl}/facility/${facilityTypeId}/finish-now`, {})
+      .pipe(tap((r) => this.syncClock(r.serverTime)));
+  }
+
+  /**
+   * Devam eden gelistirmenin kalan suresi (milisaniye). Gelistirme yoksa 0.
+   *
+   * Bu deger _tick sinyaline bagli oldugu icin saniyede dort kez yeniden
+   * hesaplanir ve ekran kendiliginden akar.
+   */
+  upgradeRemainingMs(facility: Facility): number {
+    if (!facility.upgradeCompletesAt) {
+      return 0;
+    }
+
+    const kalan = this.toEpoch(facility.upgradeCompletesAt) - this.serverNow();
+    return kalan > 0 ? kalan : 0;
+  }
+
+  /**
+   * Gelistirme suresi doldu mu?
+   *
+   * DIKKAT: Bu yalnizca ARAYUZ tahminidir. Seviyenin gercekten artmasi icin
+   * sunucuya istek atilmasi gerekir (tembel tamamlama) — bileşen bu deger
+   * true olunca loadState() cagirir ve sunucu gelistirmeyi o an uygular.
+   */
+  isUpgradeDue(facility: Facility): boolean {
+    return facility.upgradeCompletesAt !== null && this.upgradeRemainingMs(facility) === 0;
+  }
+
+  /** Gelistirmenin yuzde kaci tamamlandi (ilerleme cubugu icin). */
+  upgradeProgress(facility: Facility): number {
+    if (!facility.upgradeCompletesAt || !facility.nextLevelMinutes) {
+      return 0;
+    }
+
+    const toplamMs = facility.nextLevelMinutes * 60 * 1000;
+    const kalanMs = this.upgradeRemainingMs(facility);
+    const yuzde = 100 - (kalanMs / toplamMs) * 100;
+
+    return Math.max(0, Math.min(100, yuzde));
   }
 }

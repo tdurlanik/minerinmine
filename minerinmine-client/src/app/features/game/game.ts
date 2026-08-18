@@ -1,5 +1,5 @@
 import { HttpErrorResponse } from '@angular/common/http';
-import { Component, OnInit, inject, signal } from '@angular/core';
+import { Component, OnInit, effect, inject, signal } from '@angular/core';
 import { Router, RouterLink } from '@angular/router';
 import { ClickType, Facility } from '../../core/models/game.models';
 import { AuthService } from '../../core/services/auth.service';
@@ -8,10 +8,8 @@ import { GameService } from '../../core/services/game.service';
 /**
  * MADEN EKRANI — oyunun ana dongusu.
  *
- * Akis: butona bas -> sunucuya "kazdim" de -> sunucu ne kazandigini soyler
- *       -> ekran sunucunun dondurdugu degerlerle guncellenir.
- *
- * Ekranda gordugun hicbir sayi tarayicida hesaplanmiyor.
+ * Ekranda gordugun hicbir sayi tarayicida hesaplanmiyor; hepsi sunucudan geliyor.
+ * Tarayicinin tek isi geri sayimi akitmak ve butonlari dogru anda acmak.
  */
 @Component({
   selector: 'app-game',
@@ -26,26 +24,77 @@ export class GameComponent implements OnInit {
 
   readonly yukleniyor = signal(true);
   readonly hataMesaji = signal<string | null>(null);
+  readonly bilgiMesaji = signal<string | null>(null);
 
-  /** Son kazanc — butonun yaninda kisa sure gorunen "+1" balonu icin. */
+  /** Islem devam ederken butonlari kilitlemek icin (cift tiklama korumasi). */
+  readonly islemdeki = signal<number | null>(null);
+
+  /** Son kazanc — tesisin yaninda kisa sure gorunen kazanc balonu icin. */
   readonly sonKazanc = signal<{ facilityTypeId: number; miktar: number; anahtar: number } | null>(null);
 
+  /**
+   * Suresi dolup da henuz sunucuya sorulmamis tesisler icin tekrar tekrar
+   * istek atmayi engelleyen kayit. Yenileme istegi gonderilen tesis buraya girer.
+   */
+  private readonly yenilemeIstendi = new Set<number>();
+
+  constructor() {
+    /**
+     * TEMBEL TAMAMLAMANIN ARAYUZ AYAGI.
+     *
+     * Sunucuda arka planda calisan bir servis yok; seviye ancak bir istek
+     * geldiginde artiyor. Bu yuzden geri sayim sifira dustugunde durumu
+     * biz yeniliyoruz — sunucu o istegi alinca gelistirmeyi uyguluyor.
+     *
+     * effect(): icinde okunan sinyaller degistiginde otomatik calisir.
+     * game.serverNow() saniyede dort kez degistigi icin bu kontrol surekli
+     * yapilmis oluyor; ayri bir zamanlayici gerekmiyor.
+     */
+    effect(() => {
+      for (const tesis of this.game.facilities()) {
+        if (this.game.isUpgradeDue(tesis) && !this.yenilemeIstendi.has(tesis.facilityTypeId)) {
+          this.yenilemeIstendi.add(tesis.facilityTypeId);
+          this.durumuYenile();
+        }
+      }
+    });
+  }
+
   ngOnInit(): void {
+    this.durumuYenile(true);
+  }
+
+  private durumuYenile(ilk = false): void {
     this.game.loadState().subscribe({
-      next: () => this.yukleniyor.set(false),
+      next: (durum) => {
+        this.yukleniyor.set(false);
+
+        // Sunucu bu istekte kac gelistirme tamamladigini soyluyor.
+        if (durum.completedUpgrades > 0) {
+          this.bilgiMesaji.set(
+            durum.completedUpgrades === 1
+              ? 'Geliştirme tamamlandı!'
+              : durum.completedUpgrades + ' geliştirme tamamlandı!'
+          );
+        }
+
+        // Tamamlanan tesisler icin kaydi temizle ki yeni gelistirmede tekrar calissin.
+        for (const tesis of durum.facilities) {
+          if (!tesis.upgradeCompletesAt) {
+            this.yenilemeIstendi.delete(tesis.facilityTypeId);
+          }
+        }
+      },
       error: (hata: HttpErrorResponse) => {
         this.yukleniyor.set(false);
-        this.hataMesaji.set(
-          hata.status === 0
-            ? 'Sunucuya ulaşılamıyor. API çalışıyor mu? (http://localhost:5080)'
-            : (hata.error?.message ?? 'Oyun durumu alınamadı.')
-        );
+        if (ilk) {
+          this.hataMesaji.set(this.hatayiCozumle(hata, 'Oyun durumu alınamadı.'));
+        }
       }
     });
   }
 
   kaz(facility: Facility, click: ClickType): void {
-    // Buton zaten devre disi ama cift tiklama / klavye ile tetiklenmeye karsi koruma.
     if (!this.game.isReady(facility.facilityTypeId, click.clickTypeId)) {
       return;
     }
@@ -58,25 +107,75 @@ export class GameComponent implements OnInit {
           this.sonKazanc.set({
             facilityTypeId: facility.facilityTypeId,
             miktar: sonuc.gained,
-            anahtar: Date.now()      // her kazancta degisir -> animasyon yeniden baslar
+            anahtar: Date.now()
           });
         },
         error: (hata: HttpErrorResponse) => {
-          // 400 = bekleme suresi dolmamis. Sunucu son sozu soyler; istemci
-          // tahmini yanlissa durumu yeniden cekip senkron oluyoruz.
-          this.hataMesaji.set(hata.error?.message ?? 'Kazma yapılamadı.');
-          this.game.loadState().subscribe();
+          this.hataMesaji.set(this.hatayiCozumle(hata, 'Kazma yapılamadı.'));
+          this.durumuYenile();
         }
       });
   }
 
-  /** Geri sayimi "3,2 sn" bicimine cevirir. */
+  // ==========================================================================
+  // GELISTIRME
+  // ==========================================================================
+
+  gelistir(facility: Facility): void {
+    this.islemdeki.set(facility.facilityTypeId);
+    this.hataMesaji.set(null);
+    this.bilgiMesaji.set(null);
+
+    this.game.startUpgrade(facility.facilityTypeId).subscribe({
+      next: (sonuc) => {
+        this.islemdeki.set(null);
+        this.bilgiMesaji.set(
+          facility.name + ' seviye ' + sonuc.targetLevel + ' calismasi basladi (' +
+          sonuc.durationMinutes + ' dk).'
+        );
+        this.durumuYenile();
+      },
+      error: (hata: HttpErrorResponse) => {
+        this.islemdeki.set(null);
+        this.hataMesaji.set(this.hatayiCozumle(hata, 'Geliştirme başlatılamadı.'));
+        this.durumuYenile();
+      }
+    });
+  }
+
+  hemenBitir(facility: Facility): void {
+    this.islemdeki.set(facility.facilityTypeId);
+    this.hataMesaji.set(null);
+    this.bilgiMesaji.set(null);
+
+    this.game.finishUpgradeNow(facility.facilityTypeId).subscribe({
+      next: (sonuc) => {
+        this.islemdeki.set(null);
+        const dakika = Math.max(1, Math.round(sonuc.skippedSeconds / 60));
+        this.bilgiMesaji.set(
+          facility.name + ' seviye ' + sonuc.newLevel + ' oldu. ' +
+          dakika + ' dakika beklemekten kurtuldun.'
+        );
+        this.durumuYenile();
+      },
+      error: (hata: HttpErrorResponse) => {
+        this.islemdeki.set(null);
+        this.hataMesaji.set(this.hatayiCozumle(hata, 'İşlem tamamlanamadı.'));
+        this.durumuYenile();
+      }
+    });
+  }
+
+  // ==========================================================================
+  // GORUNTULEME YARDIMCILARI
+  // ==========================================================================
+
+  /** Kazma bekleme suresi: "0.9 sn" */
   kalanMetin(facilityTypeId: number, clickTypeId: number): string {
     const ms = this.game.remainingMs(facilityTypeId, clickTypeId);
     return ms === 0 ? '' : (ms / 1000).toFixed(1) + ' sn';
   }
 
-  /** Bekleme suresinin yuzde kaci doldu (ilerleme cubugu icin). */
   ilerleme(facilityTypeId: number, clickTypeId: number, cooldownSeconds: number): number {
     const kalan = this.game.remainingMs(facilityTypeId, clickTypeId);
     if (kalan === 0) {
@@ -85,15 +184,48 @@ export class GameComponent implements OnInit {
     return 100 - (kalan / (cooldownSeconds * 1000)) * 100;
   }
 
-  /**
-   * Buyuk sayilari kisaltir: 47115 -> "47,1B"
-   * Veri her zaman tam sayi kalir; bu yalnizca GORUNTULEME katmanidir.
-   */
+  /** Gelistirme geri sayimi: "04:12" ya da "1:02:30" */
+  gelistirmeKalan(facility: Facility): string {
+    const toplamSaniye = Math.ceil(this.game.upgradeRemainingMs(facility) / 1000);
+    if (toplamSaniye <= 0) {
+      return 'tamamlanıyor...';
+    }
+
+    const saat = Math.floor(toplamSaniye / 3600);
+    const dakika = Math.floor((toplamSaniye % 3600) / 60);
+    const saniye = toplamSaniye % 60;
+    const ikiHane = (n: number) => String(n).padStart(2, '0');
+
+    return saat > 0
+      ? saat + ':' + ikiHane(dakika) + ':' + ikiHane(saniye)
+      : ikiHane(dakika) + ':' + ikiHane(saniye);
+  }
+
+  /** Bu tesis icin gelistirme butonu aktif olmali mi? */
+  gelistirilebilir(facility: Facility): boolean {
+    if (facility.upgradeCompletesAt || facility.nextLevelCost === null) {
+      return false;   // zaten gelistiriliyor ya da son seviye
+    }
+    return this.kristal() >= facility.nextLevelCost;
+  }
+
+  kristal(): number {
+    return this.game.resources().find((r) => r.code === 'KRISTAL')?.amount ?? 0;
+  }
+
+  /** 47115 -> "47,1B". Veri hep tam sayi kalir; bu yalnizca goruntuleme katmani. */
   bicimle(sayi: number): string {
     if (sayi < 1000) return String(sayi);
-    if (sayi < 1_000_000) return (sayi / 1000).toFixed(1).replace('.', ',') + 'B';
-    if (sayi < 1_000_000_000) return (sayi / 1_000_000).toFixed(1).replace('.', ',') + 'M';
-    return (sayi / 1_000_000_000).toFixed(1).replace('.', ',') + 'Mr';
+    if (sayi < 1000000) return (sayi / 1000).toFixed(1).replace('.', ',') + 'B';
+    if (sayi < 1000000000) return (sayi / 1000000).toFixed(1).replace('.', ',') + 'M';
+    return (sayi / 1000000000).toFixed(1).replace('.', ',') + 'Mr';
+  }
+
+  private hatayiCozumle(hata: HttpErrorResponse, varsayilan: string): string {
+    if (hata.status === 0) {
+      return 'Sunucuya ulaşılamıyor. API çalışıyor mu? (http://localhost:5080)';
+    }
+    return hata.error?.message ?? varsayilan;
   }
 
   cikisYap(): void {

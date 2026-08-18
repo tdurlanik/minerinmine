@@ -37,6 +37,10 @@
         <div class="mim-uyari"><span>⏳</span><span>{{ hataMesaji() }}</span></div>
       }
 
+      @if (bilgiMesaji()) {
+        <div class="mim-uyari mim-uyari--bilgi"><span>✅</span><span>{{ bilgiMesaji() }}</span></div>
+      }
+
       @for (tesis of game.facilities(); track tesis.facilityTypeId) {
         <section class="tesis">
 
@@ -85,6 +89,63 @@
               </button>
             }
           </div>
+
+          <!-- ================= GELISTIRME BOLUMU ================= -->
+          <div class="gelistirme">
+
+            @if (tesis.upgradeCompletesAt) {
+              <!-- Devam eden calisma: geri sayim + aninda bitirme -->
+              <div class="calisma">
+                <div class="calisma__ust">
+                  <span class="calisma__etiket">
+                    ⚒️ Seviye {{ tesis.level + 1 }} çalışması
+                  </span>
+                  <span class="calisma__sayac">{{ gelistirmeKalan(tesis) }}</span>
+                </div>
+
+                <div class="cubuk">
+                  <span class="cubuk__dolum" [style.width.%]="game.upgradeProgress(tesis)"></span>
+                </div>
+
+                @if (tesis.instantFinishCost !== null) {
+                  <button
+                    type="button"
+                    class="mim-buton mim-buton--sade gelistirme__buton"
+                    [disabled]="islemdeki() === tesis.facilityTypeId"
+                    (click)="hemenBitir(tesis)">
+                    ⚡ Hemen bitir · {{ bicimle(tesis.instantFinishCost) }} Kristal
+                  </button>
+                }
+              </div>
+
+            } @else if (tesis.nextLevelCost === null) {
+              <!-- Son seviye -->
+              <p class="gelistirme__son">🏆 Son seviye</p>
+
+            } @else {
+              <!-- Gelistirme baslatilabilir -->
+              <div class="gelistirme__ozet">
+                <span>
+                  Seviye {{ tesis.level + 1 }}:
+                  üretim {{ tesis.currentProduction }} → <strong>{{ tesis.nextLevelProduction }}</strong>
+                </span>
+                <span class="gelistirme__sure">⏱ {{ tesis.nextLevelMinutes }} dk</span>
+              </div>
+
+              <button
+                type="button"
+                class="mim-buton gelistirme__buton"
+                [disabled]="!gelistirilebilir(tesis) || islemdeki() === tesis.facilityTypeId"
+                (click)="gelistir(tesis)">
+                @if (gelistirilebilir(tesis)) {
+                  ⬆️ Geliştir · {{ bicimle(tesis.nextLevelCost) }} Kristal
+                } @else {
+                  Yetersiz Kristal · {{ bicimle(tesis.nextLevelCost) }} gerekli
+                }
+              </button>
+            }
+
+          </div>
         </section>
       }
 
@@ -105,6 +166,7 @@
               }
             }
           </div>
+
         </section>
       }
 

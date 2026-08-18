@@ -69,4 +69,52 @@ public class GameController : ControllerBase
 
         return Ok(result.Data);
     }
+
+    /// <summary>Tesis gelistirmesi baslatir.</summary>
+    /// <remarks>
+    /// Maliyet ve sure istekte GONDERILMEZ; sunucu denge tablosundan okur.
+    /// Gelistirmeler tesis bazinda paraleldir: uc tesiste ayni anda gelistirme yapilabilir,
+    /// ama ayni tesiste ikinci bir gelistirme baslatilamaz.
+    /// </remarks>
+    [HttpPost("facility/{facilityTypeId:int}/upgrade")]
+    [ProducesResponseType(typeof(UpgradeStartedDto), StatusCodes.Status200OK)]
+    [ProducesResponseType(StatusCodes.Status400BadRequest)]
+    public async Task<IActionResult> StartUpgrade(int facilityTypeId)
+    {
+        var userId = User.GetUserId();
+        if (userId is null)
+        {
+            return Unauthorized(new { message = "Geçersiz token." });
+        }
+
+        var result = await _gameService.StartUpgradeAsync(userId.Value, facilityTypeId);
+
+        return result.Success
+            ? Ok(result.Data)
+            : BadRequest(new { message = result.ErrorMessage });
+    }
+
+    /// <summary>Devam eden gelistirmeyi Kristal odeyerek aninda bitirir.</summary>
+    /// <remarks>
+    /// Bedel kalan sureye gore hesaplanir ve dakika YUKARI yuvarlanir; istemci
+    /// fiyat gonderemez. Sure zaten dolmussa gelistirme ucretsiz tamamlanir ve
+    /// bu uc "devam eden gelistirme yok" doner.
+    /// </remarks>
+    [HttpPost("facility/{facilityTypeId:int}/finish-now")]
+    [ProducesResponseType(typeof(UpgradeFinishedDto), StatusCodes.Status200OK)]
+    [ProducesResponseType(StatusCodes.Status400BadRequest)]
+    public async Task<IActionResult> FinishUpgradeNow(int facilityTypeId)
+    {
+        var userId = User.GetUserId();
+        if (userId is null)
+        {
+            return Unauthorized(new { message = "Geçersiz token." });
+        }
+
+        var result = await _gameService.FinishUpgradeNowAsync(userId.Value, facilityTypeId);
+
+        return result.Success
+            ? Ok(result.Data)
+            : BadRequest(new { message = result.ErrorMessage });
+    }
 }

@@ -6,11 +6,18 @@ namespace MinerInMine.Api.Data;
 
 /// <summary>sp_Mine'in ham ciktisi: RETURN kodu + OUTPUT mesaj + sonuc satiri.</summary>
 public record MineDbResult(int ReturnCode, string? ErrorMessage, MineResultDto? Data);
+public record UpgradeStartDbResult(int ReturnCode, string? ErrorMessage, UpgradeStartedDto? Data);
+public record UpgradeFinishDbResult(int ReturnCode, string? ErrorMessage, UpgradeFinishedDto? Data);
+
+/// <summary>sp_GetPlayerState son sonuc kumesi: sunucu saati + tamamlanan gelistirme sayisi.</summary>
+internal record StateTailRow(DateTime ServerTime, int CompletedUpgrades);
 
 public interface IGameRepository
 {
     Task<PlayerStateDto> GetPlayerStateAsync(int userId);
     Task<MineDbResult> MineAsync(int userId, int facilityTypeId, int clickTypeId);
+    Task<UpgradeStartDbResult> StartUpgradeAsync(int userId, int facilityTypeId);
+    Task<UpgradeFinishDbResult> FinishUpgradeNowAsync(int userId, int facilityTypeId);
 }
 
 /// <summary>
@@ -41,13 +48,22 @@ public class GameRepository : IGameRepository
             new { UserId = userId },
             commandType: CommandType.StoredProcedure);
 
+        var resources = (await multi.ReadAsync<ResourceDto>()).ToList();
+        var facilities = (await multi.ReadAsync<FacilityDto>()).ToList();
+        var clickTypes = (await multi.ReadAsync<ClickTypeDto>()).ToList();
+        var facilityClicks = (await multi.ReadAsync<FacilityClickDto>()).ToList();
+        var tail = await multi.ReadSingleAsync<StateTailRow>();
+
         return new PlayerStateDto
         {
-            Resources = (await multi.ReadAsync<ResourceDto>()).ToList(),
-            Facilities = (await multi.ReadAsync<FacilityDto>()).ToList(),
-            ClickTypes = (await multi.ReadAsync<ClickTypeDto>()).ToList(),
-            FacilityClicks = (await multi.ReadAsync<FacilityClickDto>()).ToList(),
-            ServerTime = await multi.ReadSingleAsync<DateTime>()
+            Resources = resources,
+            Facilities = facilities,
+            ClickTypes = clickTypes,
+            FacilityClicks = facilityClicks,
+            // Son sonuc kumesi artik iki sutun donduruyor (ServerTime + CompletedUpgrades),
+            // bu yuzden duz DateTime yerine kucuk bir kayit tipine okuyoruz.
+            ServerTime = tail.ServerTime,
+            CompletedUpgrades = tail.CompletedUpgrades
         };
     }
 
@@ -79,5 +95,47 @@ public class GameRepository : IGameRepository
             ReturnCode: parameters.Get<int>("@ReturnValue"),
             ErrorMessage: parameters.Get<string?>("@ErrorMessage"),
             Data: data);
+    }
+
+    /// <summary>
+    /// Gelistirme baslatir. Maliyet, sure ve tum dogrulamalar SP icinde.
+    /// Yine miktar/sure parametresi YOK — istemci sadece hangi tesis oldugunu soyler.
+    /// </summary>
+    public async Task<UpgradeStartDbResult> StartUpgradeAsync(int userId, int facilityTypeId)
+    {
+        using var connection = _factory.CreateConnection();
+
+        var p = new DynamicParameters();
+        p.Add("@UserId", userId, DbType.Int32);
+        p.Add("@FacilityTypeId", facilityTypeId, DbType.Int32);
+        p.Add("@ErrorMessage", dbType: DbType.String, size: 255, direction: ParameterDirection.Output);
+        p.Add("@ReturnValue", dbType: DbType.Int32, direction: ParameterDirection.ReturnValue);
+
+        var data = await connection.QuerySingleOrDefaultAsync<UpgradeStartedDto>(
+            "sp_StartFacilityUpgrade", p, commandType: CommandType.StoredProcedure);
+
+        return new UpgradeStartDbResult(
+            p.Get<int>("@ReturnValue"), p.Get<string?>("@ErrorMessage"), data);
+    }
+
+    /// <summary>
+    /// Devam eden gelistirmeyi Kristal odeyerek aninda bitirir.
+    /// Bedeli sunucu KALAN SUREYE gore hesaplar; istemci fiyat gonderemez.
+    /// </summary>
+    public async Task<UpgradeFinishDbResult> FinishUpgradeNowAsync(int userId, int facilityTypeId)
+    {
+        using var connection = _factory.CreateConnection();
+
+        var p = new DynamicParameters();
+        p.Add("@UserId", userId, DbType.Int32);
+        p.Add("@FacilityTypeId", facilityTypeId, DbType.Int32);
+        p.Add("@ErrorMessage", dbType: DbType.String, size: 255, direction: ParameterDirection.Output);
+        p.Add("@ReturnValue", dbType: DbType.Int32, direction: ParameterDirection.ReturnValue);
+
+        var data = await connection.QuerySingleOrDefaultAsync<UpgradeFinishedDto>(
+            "sp_FinishUpgradeNow", p, commandType: CommandType.StoredProcedure);
+
+        return new UpgradeFinishDbResult(
+            p.Get<int>("@ReturnValue"), p.Get<string?>("@ErrorMessage"), data);
     }
 }

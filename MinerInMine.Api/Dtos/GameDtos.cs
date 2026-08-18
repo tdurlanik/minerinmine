@@ -60,6 +60,12 @@ public class FacilityDto
     public long? NextLevelCost { get; set; }
     public int? NextLevelMinutes { get; set; }
 
+    /// <summary>Bir sonraki seviyedeki uretim — "1 -> 2 demir" karsilastirmasi icin.</summary>
+    public long? NextLevelProduction { get; set; }
+
+    /// <summary>Devam eden gelistirmeyi aninda bitirmenin O ANKI bedeli; gelistirme yoksa null.</summary>
+    public long? InstantFinishCost { get; set; }
+
     /// <summary>Devam eden bir gelistirme varsa bitis ani, yoksa null.</summary>
     public DateTime? UpgradeCompletesAt { get; set; }
     public DateTime LastCollectedAt { get; set; }
@@ -92,5 +98,31 @@ public class PlayerStateDto
     public List<FacilityDto> Facilities { get; set; } = new();
     public List<ClickTypeDto> ClickTypes { get; set; } = new();
     public List<FacilityClickDto> FacilityClicks { get; set; } = new();
+    public DateTime ServerTime { get; set; }
+
+    /// <summary>Bu istek sirasinda suresi dolup tamamlanan gelistirme sayisi (tembel tamamlama).</summary>
+    public int CompletedUpgrades { get; set; }
+}
+
+/// <summary>Gelistirme baslatma sonucu.</summary>
+public class UpgradeStartedDto
+{
+    public int TargetLevel { get; set; }
+    public long Cost { get; set; }
+    public long NewBalance { get; set; }
+    public int DurationMinutes { get; set; }
+    public DateTime UpgradeCompletesAt { get; set; }
+    public DateTime ServerTime { get; set; }
+}
+
+/// <summary>Aninda bitirme sonucu.</summary>
+public class UpgradeFinishedDto
+{
+    public int NewLevel { get; set; }
+    public long Cost { get; set; }
+    public long NewBalance { get; set; }
+
+    /// <summary>Odeme ile atlanan sure — "3 dakika kazandin" bildirimi icin.</summary>
+    public int SkippedSeconds { get; set; }
     public DateTime ServerTime { get; set; }
 }

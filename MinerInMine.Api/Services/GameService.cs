@@ -7,6 +7,8 @@ public interface IGameService
 {
     Task<PlayerStateDto> GetStateAsync(int userId);
     Task<ServiceResult<MineResultDto>> MineAsync(int userId, MineRequest request);
+    Task<ServiceResult<UpgradeStartedDto>> StartUpgradeAsync(int userId, int facilityTypeId);
+    Task<ServiceResult<UpgradeFinishedDto>> FinishUpgradeNowAsync(int userId, int facilityTypeId);
 }
 
 /// <summary>
@@ -60,5 +62,62 @@ public class GameService : IGameService
 
                 return ServiceResult<MineResultDto>.Fail("Kazma sırasında beklenmeyen bir hata oluştu.");
         }
+    }
+
+    /// <summary>
+    /// Tesis gelistirmesi baslatir.
+    ///
+    /// sp_StartFacilityUpgrade RETURN kodlari:
+    ///   0    basarili
+    ///  -1    tesise sahip degil
+    ///  -2    son seviyede
+    ///  -3    zaten devam eden gelistirme var (ya da yaris durumunda kaybetti)
+    ///  -4    yetersiz Kristal
+    ///  -99   beklenmeyen hata
+    /// </summary>
+    public async Task<ServiceResult<UpgradeStartedDto>> StartUpgradeAsync(int userId, int facilityTypeId)
+    {
+        var result = await _repository.StartUpgradeAsync(userId, facilityTypeId);
+
+        if (result.ReturnCode == 0 && result.Data is not null)
+        {
+            return ServiceResult<UpgradeStartedDto>.Ok(result.Data);
+        }
+
+        if (result.ReturnCode >= -4)
+        {
+            return ServiceResult<UpgradeStartedDto>.Fail(result.ErrorMessage ?? "Gelistirme baslatilamadi.");
+        }
+
+        _logger.LogError(
+            "sp_StartFacilityUpgrade beklenmeyen sonuc. UserId={UserId} Facility={Facility} RC={RC} Hata={Error}",
+            userId, facilityTypeId, result.ReturnCode, result.ErrorMessage);
+
+        return ServiceResult<UpgradeStartedDto>.Fail("Geliştirme sırasında beklenmeyen bir hata oluştu.");
+    }
+
+    /// <summary>
+    /// Devam eden gelistirmeyi Kristal odeyerek aninda bitirir.
+    /// Bedel istemciden gelmez; sunucu kalan sureye gore hesaplar.
+    /// </summary>
+    public async Task<ServiceResult<UpgradeFinishedDto>> FinishUpgradeNowAsync(int userId, int facilityTypeId)
+    {
+        var result = await _repository.FinishUpgradeNowAsync(userId, facilityTypeId);
+
+        if (result.ReturnCode == 0 && result.Data is not null)
+        {
+            return ServiceResult<UpgradeFinishedDto>.Ok(result.Data);
+        }
+
+        if (result.ReturnCode >= -4)
+        {
+            return ServiceResult<UpgradeFinishedDto>.Fail(result.ErrorMessage ?? "İşlem tamamlanamadı.");
+        }
+
+        _logger.LogError(
+            "sp_FinishUpgradeNow beklenmeyen sonuc. UserId={UserId} Facility={Facility} RC={RC} Hata={Error}",
+            userId, facilityTypeId, result.ReturnCode, result.ErrorMessage);
+
+        return ServiceResult<UpgradeFinishedDto>.Fail("İşlem sırasında beklenmeyen bir hata oluştu.");
     }
 }
