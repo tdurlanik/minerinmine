@@ -139,7 +139,13 @@ builder.Services.AddCors(options =>
     {
         policy.WithOrigins(allowedOrigins)
               .AllowAnyHeader()
-              .AllowAnyMethod();
+              .AllowAnyMethod()
+
+              // Refresh token HttpOnly cookie ile tasindigi icin tarayicinin
+              // cookie'yi capraz-origin isteklerde gondermesine izin vermeliyiz.
+              // DIKKAT: AllowCredentials, AllowAnyOrigin ile BIRLIKTE KULLANILAMAZ —
+              // tam da bu yuzden origin listesini acikca yaziyoruz.
+              .AllowCredentials();
     });
 });
 

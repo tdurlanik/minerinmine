@@ -1,46 +1,55 @@
 import { HttpClient } from '@angular/common/http';
 import { Injectable, computed, inject, signal } from '@angular/core';
-import { Observable, tap } from 'rxjs';
+import { Observable, catchError, map, of, tap } from 'rxjs';
 import { environment } from '../../../environments/environment';
 import { AuthResponse, LoginRequest, RegisterRequest, UserInfo } from '../models/auth.models';
 
 /**
  * UYGULAMANIN KİMLİK MERKEZİ.
  *
- * Sorumlulukları:
- *  1. API'nin auth uçlarıyla konuşmak (register / login / refresh / revoke)
- *  2. Token'ları saklamak ve okumak (localStorage)
- *  3. "Şu an kim giriş yapmış?" sorusunu tüm uygulamaya signal ile duyurmak
+ * TOKEN SAKLAMA STRATEJİSİ — iki token, iki farklı yer:
  *
- * providedIn: 'root' -> Angular bu servisten uygulama boyunca TEK BİR TANE üretir
- * (singleton). Login sayfasının yazdığı bilgiyi Dashboard aynı nesneden okur.
+ *   Access token (15 dk)  -> sessionStorage
+ *   Refresh token (7 gün) -> HttpOnly cookie (bu kod onu HİÇ GÖREMEZ)
+ *
+ * NEDEN?
+ * XSS ile sayfaya sızan bir script sessionStorage'ı okuyabilir. Eskiden refresh
+ * token da localStorage'daydı: saldırgan onu alınca 7 gün boyunca istediği zaman
+ * yeni access token üretebiliyordu — yani KALICI hesap ele geçirme.
+ *
+ * Şimdi refresh token HttpOnly cookie'de. JavaScript onu okuyamaz; bu dosyada
+ * bile bir "refreshToken" değişkeni yok. Saldırganın alabileceği en fazla şey
+ * 15 dakikalık bir access token'dır ve onu yenileyemez.
+ *
+ * NEDEN sessionStorage, localStorage değil?
+ *   - Sekme kapanınca silinir  -> paylaşılan bilgisayarda oturum kalmaz
+ *   - F5'e dayanır             -> sayfa yenilemede yeniden giriş gerekmez
+ *   - Zaten 15 dakikalık       -> uzun süre durması anlamsız
+ *
+ * Oturumun kalıcılığını cookie sağlıyor: yeni sekmede sessionStorage boş olur
+ * ama cookie durduğu için restoreSession() sessizce yeni access token alır.
  */
 @Injectable({ providedIn: 'root' })
 export class AuthService {
   private readonly http = inject(HttpClient);
   private readonly apiUrl = `${environment.apiUrl}/auth`;
 
-  // localStorage anahtarları tek yerde tanımlı olsun ki yazım hatası olmasın.
   private static readonly ACCESS_TOKEN_KEY = 'mim_access_token';
-  private static readonly REFRESH_TOKEN_KEY = 'mim_refresh_token';
   private static readonly USER_KEY = 'mim_user';
 
   /**
-   * SIGNAL NEDİR?
-   * Değeri değiştiğinde, o değeri kullanan her yeri (şablonlar dahil) otomatik
-   * güncelleyen reaktif bir kutu. Angular 21 varsayılan olarak "zoneless" çalışır;
-   * yani değişiklikleri zone.js ile tahmin etmez, signal'lar ile KESİN olarak bilir.
+   * withCredentials: true — tarayıcının HttpOnly cookie'yi bu isteklerle birlikte
+   * göndermesini (ve Set-Cookie cevabını saklamasını) sağlar. Farklı port =
+   * farklı origin olduğu için bu bayrak olmadan cookie hiç taşınmaz.
    *
-   * private _currentUser -> dışarıdan değiştirilemesin diye gizli.
-   * currentUser          -> dışarıya salt-okunur (readonly) olarak açılır.
+   * Yalnızca /api/auth uçlarında gerekli; oyun uçları Authorization başlığı
+   * kullanır ve cookie taşımaz (bu yüzden CSRF'e de bağışıktır).
    */
+  private static readonly WITH_COOKIE = { withCredentials: true };
+
   private readonly _currentUser = signal<UserInfo | null>(this.readUserFromStorage());
   readonly currentUser = this._currentUser.asReadonly();
 
-  /**
-   * computed = başka signal'lardan TÜRETİLEN signal.
-   * currentUser değiştiğinde bu da otomatik yeniden hesaplanır.
-   */
   readonly isLoggedIn = computed(() => this._currentUser() !== null);
   readonly username = computed(() => this._currentUser()?.username ?? '');
   readonly roles = computed(() => this._currentUser()?.roles ?? []);
@@ -50,90 +59,80 @@ export class AuthService {
   // API ÇAĞRILARI
   // ==========================================================================
 
-  /**
-   * Kayıt olur. Backend kayıt sonrası otomatik giriş yaptırıp token döndürür.
-   *
-   * tap(): RxJS operatörü. Akıştaki veriyi DEĞİŞTİRMEDEN "yan etki" yapmamızı
-   * sağlar — burada gelen token'ları kaydediyoruz. Bileşen sadece subscribe eder,
-   * token saklama detayıyla hiç ilgilenmez.
-   */
   register(request: RegisterRequest): Observable<AuthResponse> {
     return this.http
-      .post<AuthResponse>(`${this.apiUrl}/register`, request)
+      .post<AuthResponse>(`${this.apiUrl}/register`, request, AuthService.WITH_COOKIE)
       .pipe(tap((response) => this.saveSession(response)));
   }
 
-  /** Giriş yapar ve oturumu kaydeder. */
   login(request: LoginRequest): Observable<AuthResponse> {
     return this.http
-      .post<AuthResponse>(`${this.apiUrl}/login`, request)
+      .post<AuthResponse>(`${this.apiUrl}/login`, request, AuthService.WITH_COOKIE)
       .pipe(tap((response) => this.saveSession(response)));
   }
 
-  /** Süresi dolan access token'ı yeniler (backend eskisini iptal edip yenisini verir). */
+  /**
+   * Yeni access token alır.
+   *
+   * DİKKAT: İstek gövdesi BOŞ. Refresh token'ı göndermiyoruz çünkü elimizde yok —
+   * tarayıcı onu cookie olarak kendisi ekliyor. Bu, tasarımın en güzel tarafı:
+   * gönderemediğimiz bir şey çalınamaz da.
+   */
   refreshToken(): Observable<AuthResponse> {
     return this.http
-      .post<AuthResponse>(`${this.apiUrl}/refresh-token`, { refreshToken: this.getRefreshToken() })
+      .post<AuthResponse>(`${this.apiUrl}/refresh-token`, {}, AuthService.WITH_COOKIE)
       .pipe(tap((response) => this.saveSession(response)));
+  }
+
+  /**
+   * SESSİZ OTURUM KURTARMA — uygulama açılırken bir kez çalışır.
+   *
+   * Yeni sekmede sessionStorage boştur ama cookie hâlâ duruyor olabilir.
+   * O yüzden token yoksa sessizce yenilemeyi deniyoruz:
+   *   - Başarılı  -> kullanıcı hiç fark etmeden giriş yapmış olur
+   *   - Başarısız -> giriş ekranı (hata gösterilmez, bu normal bir durum)
+   *
+   * Hiçbir koşulda hata FIRLATMAZ; aksi halde uygulama açılışı bloke olurdu.
+   */
+  restoreSession(): Observable<boolean> {
+    if (this.getAccessToken()) {
+      return of(true);          // aynı sekmede F5: token zaten elimizde
+    }
+
+    return this.refreshToken().pipe(
+      map(() => true),
+      catchError(() => {
+        this.clearSession();    // cookie yok ya da geçersiz: temiz başla
+        return of(false);
+      })
+    );
   }
 
   /**
    * Çıkış yapar.
    *
-   * SIRALAMA BURADA KRİTİKTİR — bu projede bir hataya sebep oldu:
-   * Önce yerel oturumu SENKRON olarak temizliyoruz, sunucuya haber vermeyi
-   * SONRA yapıyoruz.
-   *
-   * Neden? Bileşen çıkış butonunda şunu yapıyor:
-   *     authService.logout();
-   *     router.navigateByUrl('/login');
-   * Temizlik HTTP cevabını bekleseydi, navigateByUrl çalıştığı anda isLoggedIn()
-   * hâlâ true olurdu; /login rotasındaki guestGuard "zaten giriş yapmış" deyip
-   * kullanıcıyı dashboard'a geri gönderirdi. Cevap sonradan gelir, token silinir
-   * ama kullanıcı ekranda takılı kalırdı.
-   *
-   * Ayrıca bu sıralama daha doğrudur: kullanıcı "çıkış" dediyse, sunucu kapalı
-   * olsa bile çıkmış olmalıdır.
+   * Yerel durumu ÖNCE ve senkron temizliyoruz (yönlendirme hemen çalışsın diye),
+   * sunucuya haber vermeyi sonra yapıyoruz. Sunucu hem veritabanındaki token'ı
+   * iptal eder hem cookie'yi siler.
    */
   logout(): void {
-    const refreshToken = this.getRefreshToken();
-
-    // 1) Yerel oturumu ANINDA sil -> isLoggedIn() artık false.
     this.clearSession();
 
-    // 2) Sunucuya refresh token'ı iptal ettir (arka planda).
-    //    subscribe() çağırmazsak istek HİÇ gönderilmez: HttpClient'ın döndürdüğü
-    //    Observable "soğuktur" (cold), yani abone olunana kadar çalışmaz.
-    //    Hata olsa da umursamıyoruz; yerel oturum zaten kapandı.
-    if (refreshToken) {
-      this.http.post(`${this.apiUrl}/revoke-token`, { refreshToken }).subscribe({
-        error: () => {
-          /* sunucuya ulaşılamadı; yerel çıkış yine de geçerli */
-        }
-      });
-    }
+    this.http.post(`${this.apiUrl}/revoke-token`, {}, AuthService.WITH_COOKIE).subscribe({
+      error: () => {
+        /* sunucuya ulaşılamadı; yerel çıkış yine de geçerli */
+      }
+    });
   }
 
   // ==========================================================================
   // TOKEN SAKLAMA
-  //
-  // GÜVENLİK NOTU (staj sunumunda sorulabilir):
-  // Token'ı localStorage'da tutmak en kolay yöntemdir ama XSS saldırısına açıktır:
-  // sayfaya kötü niyetli bir script sızarsa token'ı okuyabilir.
-  // Daha güvenli alternatif: refresh token'ı sunucunun HttpOnly + Secure cookie
-  // olarak yazması (JavaScript o cookie'yi okuyamaz). Öğrenme amaçlı olduğu için
-  // burada localStorage tercih edildi.
   // ==========================================================================
 
   getAccessToken(): string | null {
-    return localStorage.getItem(AuthService.ACCESS_TOKEN_KEY);
+    return sessionStorage.getItem(AuthService.ACCESS_TOKEN_KEY);
   }
 
-  getRefreshToken(): string | null {
-    return localStorage.getItem(AuthService.REFRESH_TOKEN_KEY);
-  }
-
-  /** Başarılı bir auth cevabını localStorage'a ve signal'a yazar. */
   private saveSession(response: AuthResponse): void {
     const user: UserInfo = {
       userId: response.userId,
@@ -142,32 +141,27 @@ export class AuthService {
       roles: response.roles
     };
 
-    localStorage.setItem(AuthService.ACCESS_TOKEN_KEY, response.accessToken);
-    localStorage.setItem(AuthService.REFRESH_TOKEN_KEY, response.refreshToken);
-    localStorage.setItem(AuthService.USER_KEY, JSON.stringify(user));
+    // Refresh token BURADA YOK — cevabın gövdesinde hiç gelmiyor.
+    sessionStorage.setItem(AuthService.ACCESS_TOKEN_KEY, response.accessToken);
+    sessionStorage.setItem(AuthService.USER_KEY, JSON.stringify(user));
 
-    // Signal'ı güncelle -> bu değeri kullanan tüm şablonlar anında yenilenir.
     this._currentUser.set(user);
   }
 
-  /** Tüm oturum izlerini siler. */
   private clearSession(): void {
-    localStorage.removeItem(AuthService.ACCESS_TOKEN_KEY);
-    localStorage.removeItem(AuthService.REFRESH_TOKEN_KEY);
-    localStorage.removeItem(AuthService.USER_KEY);
+    sessionStorage.removeItem(AuthService.ACCESS_TOKEN_KEY);
+    sessionStorage.removeItem(AuthService.USER_KEY);
     this._currentUser.set(null);
   }
 
   /**
-   * Sayfa yenilendiğinde (F5) uygulama sıfırdan yüklenir ve hafızadaki her şey
-   * kaybolur. Bu metot, servis ilk oluşturulurken localStorage'a bakıp oturumu
-   * geri yükler — kullanıcı her F5'te login'e atılmasın diye.
+   * Sayfa yenilendiğinde (F5) aynı sekmede oturumu geri yükler.
+   * Yeni bir sekmede burası boş döner; devreye restoreSession() girer.
    */
   private readUserFromStorage(): UserInfo | null {
-    const raw = localStorage.getItem(AuthService.USER_KEY);
-    const token = localStorage.getItem(AuthService.ACCESS_TOKEN_KEY);
+    const raw = sessionStorage.getItem(AuthService.USER_KEY);
+    const token = sessionStorage.getItem(AuthService.ACCESS_TOKEN_KEY);
 
-    // Kullanıcı bilgisi var ama token yoksa (ya da tersi) veri tutarsızdır: güvenme.
     if (!raw || !token) {
       return null;
     }
@@ -175,8 +169,7 @@ export class AuthService {
     try {
       return JSON.parse(raw) as UserInfo;
     } catch {
-      // localStorage elle kurcalanmış olabilir; bozuk veriye güvenmeyip temizliyoruz.
-      localStorage.removeItem(AuthService.USER_KEY);
+      sessionStorage.removeItem(AuthService.USER_KEY);
       return null;
     }
   }

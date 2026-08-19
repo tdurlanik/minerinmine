@@ -1,4 +1,5 @@
 using System.ComponentModel.DataAnnotations;
+using System.Text.Json.Serialization;
 
 namespace MinerInMine.Api.Dtos;
 
@@ -43,11 +44,13 @@ public class LoginRequest
     public string Password { get; set; } = string.Empty;
 }
 
-/// <summary>Refresh / revoke isteklerinin gövdesi</summary>
+/// <summary>
+/// Artık kullanılmıyor — refresh token istek gövdesinde değil, HttpOnly cookie'de
+/// taşınıyor. Geriye dönük uyumluluk için bırakıldı; yeni uçlar gövde beklemez.
+/// </summary>
 public class RefreshTokenRequest
 {
-    [Required]
-    public string RefreshToken { get; set; } = string.Empty;
+    public string? RefreshToken { get; set; }
 }
 
 /// <summary>
@@ -64,8 +67,21 @@ public class AuthResponse
     /// <summary>Kısa ömürlü (15 dk) JWT. Her istekte gönderilir.</summary>
     public string AccessToken { get; set; } = string.Empty;
 
-    /// <summary>Uzun ömürlü (7 gün) rastgele anahtar. Sadece yeni access token almak için kullanılır.</summary>
+    /// <summary>
+    /// Uzun ömürlü (7 gün) rastgele anahtar.
+    ///
+    /// [JsonIgnore] — BU ALAN CEVAP GÖVDESİNE ASLA YAZILMAZ.
+    /// Refresh token artık HttpOnly cookie ile taşınıyor: JavaScript onu okuyamaz,
+    /// dolayısıyla XSS ile çalınamaz. Bu property yalnızca servis katmanından
+    /// controller'a taşımak için var; controller cookie'yi yazar ve alan JSON'a
+    /// hiç çıkmaz. Attribute'u kaldırmak, kapatılan açığı geri açar.
+    /// </summary>
+    [JsonIgnore]
     public string RefreshToken { get; set; } = string.Empty;
+
+    /// <summary>Refresh token'ın bitiş zamanı — cookie ömrünü ayarlamak için. Gövdeye yazılmaz.</summary>
+    [JsonIgnore]
+    public DateTime RefreshTokenExpiresAt { get; set; }
 
     /// <summary>Access token'ın bitiş zamanı (UTC). Frontend süreyi buradan takip edebilir.</summary>
     public DateTime AccessTokenExpiresAt { get; set; }

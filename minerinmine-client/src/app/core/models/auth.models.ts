@@ -31,7 +31,9 @@ export interface AuthResponse {
   email: string;
   roles: string[];
   accessToken: string;
-  refreshToken: string;
+
+  // refreshToken alani BILEREK YOK: artik HttpOnly cookie ile tasiniyor ve
+  // cevabin govdesinde hic gelmiyor. Buraya eklemek, kapatilan acigi geri acar.
   accessTokenExpiresAt: string;
 }
 

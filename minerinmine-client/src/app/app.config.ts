@@ -1,7 +1,13 @@
 import { provideHttpClient, withInterceptors } from '@angular/common/http';
-import { ApplicationConfig, provideBrowserGlobalErrorListeners } from '@angular/core';
+import {
+  ApplicationConfig,
+  inject,
+  provideAppInitializer,
+  provideBrowserGlobalErrorListeners
+} from '@angular/core';
 import { provideRouter, withComponentInputBinding } from '@angular/router';
 import { jwtInterceptor } from './core/interceptors/jwt.interceptor';
+import { AuthService } from './core/services/auth.service';
 import { routes } from './app.routes';
 
 /**
@@ -25,6 +31,24 @@ export const appConfig: ApplicationConfig = {
 
     // Router'ı kurar. withComponentInputBinding(): rota parametrelerini doğrudan
     // bileşen @Input'larına bağlamayı sağlar (ileride oyun sayfalarında işimize yarayacak).
-    provideRouter(routes, withComponentInputBinding())
+    provideRouter(routes, withComponentInputBinding()),
+
+    /**
+     * SESSİZ OTURUM KURTARMA
+     *
+     * Uygulama ekrana çizilmeden ÖNCE bir kez çalışır.
+     *
+     * Access token sessionStorage'da tutuluyor; yeni bir sekmede orası boştur.
+     * Ama refresh token HttpOnly cookie'de duruyor olabilir. Bu yüzden açılışta
+     * sessizce yenilemeyi deniyoruz — başarılıysa kullanıcı hiç fark etmeden
+     * giriş yapmış olur, değilse giriş ekranına düşer.
+     *
+     * Bu adım olmasaydı her yeni sekme yeniden şifre isterdi ve 7 günlük
+     * refresh token'ın hiçbir anlamı kalmazdı.
+     *
+     * restoreSession() hiçbir koşulda hata fırlatmaz; aksi halde uygulama
+     * açılışı bloke olurdu.
+     */
+    provideAppInitializer(() => inject(AuthService).restoreSession())
   ]
 };

@@ -210,7 +210,8 @@ public class AuthService : IAuthService
             Email = user.Email,
             Roles = roles.Select(r => r.Name).ToList(),
             AccessToken = accessToken,
-            RefreshToken = refreshToken,
+            RefreshToken = refreshToken,               // [JsonIgnore] — cookie'ye yazılacak
+            RefreshTokenExpiresAt = refreshExpires,
             AccessTokenExpiresAt = accessExpires
         };
     }
