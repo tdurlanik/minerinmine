@@ -68,6 +68,36 @@ export interface PlayerState {
 
   /** Henuz toplanmamis, madencilerin urettigi kaynaklar. */
   pending: PendingProduction[];
+
+  /** Sahip olunmayan ama satin alinabilecek tesisler. */
+  purchasable: PurchasableFacility[];
+}
+
+/**
+ * Satin alinabilir tesis.
+ *
+ * Tesisler sadece parayla degil ILERLEMEYLE de kapilanir: onceki tesisin
+ * belirli bir seviyeye ulasmasi gerekir. isUnlocked false ise kilitli gosterilir.
+ */
+export interface PurchasableFacility {
+  facilityTypeId: number;
+  code: string;
+  name: string;
+  resourceCode: string;
+  resourceName: string;
+  cost: number;
+  startProduction: number;
+  requiredFacilityName: string | null;
+  requiredLevel: number;
+  requiredCurrentLevel: number;
+  isUnlocked: boolean;
+}
+
+export interface BuyFacilityResult {
+  facilityName: string;
+  cost: number;
+  newBalance: number;
+  serverTime: string;
 }
 
 export interface Miner {

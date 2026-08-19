@@ -623,3 +623,12 @@
   padding: 9px;
   font-size: 13.5px;
 }
+
+/* Kilitli tesis satiri */
+.urun--kilitli {
+  opacity: 0.6;
+}
+
+.urun__bilgi--kilit {
+  color: var(--bakir);
+}

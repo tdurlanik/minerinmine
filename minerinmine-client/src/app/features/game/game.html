@@ -216,6 +216,44 @@
         </section>
       }
 
+      <!-- ============ YENI TESISLER ============ -->
+      @if (game.purchasable().length > 0) {
+        <section class="dukkan">
+          <h3 class="dukkan__baslik">🏗️ Yeni Tesisler</h3>
+          <p class="dukkan__aciklama">
+            Her tesis farklı bir maden çıkarır. Açmak için önceki tesisi belirli
+            bir seviyeye getirmen gerekir.
+          </p>
+
+          @for (tesis of game.purchasable(); track tesis.facilityTypeId) {
+            <div class="urun" [class.urun--kilitli]="!tesis.isUnlocked">
+              <div class="urun__sol">
+                <span class="urun__ad">
+                  {{ tesis.name }}
+                  <span class="urun__sv">{{ tesis.resourceName }} çıkarır</span>
+                </span>
+                @if (tesis.isUnlocked) {
+                  <span class="urun__bilgi">
+                    Kazma başına {{ tesis.startProduction }} {{ tesis.resourceName }} ile başlar
+                  </span>
+                } @else {
+                  <span class="urun__bilgi urun__bilgi--kilit">
+                    🔒 {{ tesis.requiredFacilityName }} seviye {{ tesis.requiredLevel }} olmalı
+                    (şu an {{ tesis.requiredCurrentLevel }})
+                  </span>
+                }
+              </div>
+              <button type="button" class="urun__buton"
+                      [disabled]="!tesisAlinabilir(tesis) || islemdeki() === -tesis.facilityTypeId"
+                      (click)="tesisAl(tesis)">
+                @if (!tesis.isUnlocked) { Kilitli }
+                @else { {{ bicimle(tesis.cost) }} Kristal }
+              </button>
+            </div>
+          }
+        </section>
+      }
+
       <!-- ============ SATIS ============ -->
       @if (satilabilirler().length > 0) {
         <section class="dukkan">

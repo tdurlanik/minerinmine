@@ -14,6 +14,7 @@ public interface IGameService
     Task<ServiceResult<SellResultDto>> SellAsync(int userId, SellRequest request);
     Task<ServiceResult<PurchaseResultDto>> BuyUpgradeAsync(int userId, int upgradeTypeId);
     Task<ServiceResult<UnlockResultDto>> UnlockClickAsync(int userId, int clickTypeId);
+    Task<ServiceResult<BuyFacilityResultDto>> BuyFacilityAsync(int userId, int facilityTypeId);
 }
 
 /// <summary>
@@ -173,6 +174,20 @@ public class GameService : IGameService
     {
         var r = await _repository.UnlockClickAsync(userId, clickTypeId);
         return Yorumla(r.ReturnCode, r.ErrorMessage, r.Data, "Kazma türü açılamadı.", userId, "sp_UnlockClickType");
+    }
+
+    /// <summary>
+    /// Yeni tesis satin alir.
+    ///
+    /// Once birikmis uretim toplanir: yeni tesis eklendiginde toplama islemi
+    /// TUM tesisleri kapsadigi icin, once eskilerin hesabini kapatiyoruz.
+    /// </summary>
+    public async Task<ServiceResult<BuyFacilityResultDto>> BuyFacilityAsync(int userId, int facilityTypeId)
+    {
+        await _repository.CollectAsync(userId);
+
+        var r = await _repository.BuyFacilityAsync(userId, facilityTypeId);
+        return Yorumla(r.ReturnCode, r.ErrorMessage, r.Data, "Tesis satın alınamadı.", userId, "sp_BuyFacility");
     }
 
     /// <summary>

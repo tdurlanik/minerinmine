@@ -109,6 +109,9 @@ public class PlayerStateDto
     public List<MinerDto> Miners { get; set; } = new();
     public List<UpgradeDto> Upgrades { get; set; } = new();
     public List<PendingProductionDto> Pending { get; set; } = new();
+
+    /// <summary>Sahip olunmayan ama satin alinabilecek tesisler.</summary>
+    public List<PurchasableFacilityDto> Purchasable { get; set; } = new();
 }
 
 /// <summary>Gelistirme baslatma sonucu.</summary>
@@ -226,6 +229,39 @@ public class PurchaseResultDto
 
 public class UnlockResultDto
 {
+    public long Cost { get; set; }
+    public long NewBalance { get; set; }
+    public DateTime ServerTime { get; set; }
+}
+
+/// <summary>
+/// Henuz sahip olunmayan, satin alinabilecek tesis.
+///
+/// Tesisler sadece parayla degil ILERLEMEYLE de kapilanir: onceki tesisin
+/// belirli bir seviyeye ulasmasi gerekir. Bu sayede yeni tesis bir hedef olur.
+/// </summary>
+public class PurchasableFacilityDto
+{
+    public int FacilityTypeId { get; set; }
+    public string Code { get; set; } = string.Empty;
+    public string Name { get; set; } = string.Empty;
+    public string ResourceCode { get; set; } = string.Empty;
+    public string ResourceName { get; set; } = string.Empty;
+    public long Cost { get; set; }
+    public long StartProduction { get; set; }
+
+    /// <summary>On kosul olan tesisin adi; baslangic tesisi icin null.</summary>
+    public string? RequiredFacilityName { get; set; }
+    public int RequiredLevel { get; set; }
+    public int RequiredCurrentLevel { get; set; }
+
+    /// <summary>On kosul saglandi mi? false ise arayuz kilitli gosterir.</summary>
+    public bool IsUnlocked { get; set; }
+}
+
+public class BuyFacilityResultDto
+{
+    public string FacilityName { get; set; } = string.Empty;
     public long Cost { get; set; }
     public long NewBalance { get; set; }
     public DateTime ServerTime { get; set; }

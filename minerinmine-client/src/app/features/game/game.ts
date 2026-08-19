@@ -1,7 +1,13 @@
 import { HttpErrorResponse } from '@angular/common/http';
 import { Component, OnInit, effect, inject, signal } from '@angular/core';
 import { Router, RouterLink } from '@angular/router';
-import { ClickType, Facility, Miner, Upgrade } from '../../core/models/game.models';
+import {
+  ClickType,
+  Facility,
+  Miner,
+  PurchasableFacility,
+  Upgrade
+} from '../../core/models/game.models';
 import { AuthService } from '../../core/services/auth.service';
 import { GameService } from '../../core/services/game.service';
 
@@ -375,6 +381,39 @@ export class GameComponent implements OnInit {
         this.hataMesaji.set(this.hatayiCozumle(hata, 'Ödül alınamadı.'));
       }
     });
+  }
+
+  /**
+   * Yeni tesis satin alir.
+   *
+   * Buton yalnizca on kosul saglandiginda ve Kristal yettiginde aktif olur;
+   * ama asil dogrulama sunucuda yapilir.
+   */
+  tesisAl(tesis: PurchasableFacility): void {
+    // Negatif deger kullaniyoruz ki madenci/guclendirme kimlikleriyle cakismasin.
+    this.islemdeki.set(-tesis.facilityTypeId);
+    this.hataMesaji.set(null);
+    this.bilgiMesaji.set(null);
+
+    this.game.buyFacility(tesis.facilityTypeId).subscribe({
+      next: (sonuc) => {
+        this.islemdeki.set(null);
+        this.bilgiMesaji.set(
+          sonuc.facilityName + ' açıldı! Artık ' + tesis.resourceName + ' de çıkarabilirsin.'
+        );
+        this.durumuYenile();
+      },
+      error: (hata: HttpErrorResponse) => {
+        this.islemdeki.set(null);
+        this.hataMesaji.set(this.hatayiCozumle(hata, 'Tesis satın alınamadı.'));
+        this.durumuYenile();
+      }
+    });
+  }
+
+  /** Tesis satin alma butonu aktif olmali mi? */
+  tesisAlinabilir(tesis: PurchasableFacility): boolean {
+    return tesis.isUnlocked && this.kristal() >= tesis.cost;
   }
 
   /** Satilabilir kaynaklar: para birimi olmayan ve elde bulunanlar. */

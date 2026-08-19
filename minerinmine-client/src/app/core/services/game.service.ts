@@ -3,6 +3,7 @@ import { Injectable, computed, inject, signal } from '@angular/core';
 import { Observable, tap } from 'rxjs';
 import { environment } from '../../../environments/environment';
 import {
+  BuyFacilityResult,
   CollectedResource,
   Facility,
   HireMinerResult,
@@ -65,6 +66,7 @@ export class GameService {
   readonly miners = computed(() => this._state()?.miners ?? []);
   readonly upgrades = computed(() => this._state()?.upgrades ?? []);
   readonly pending = computed(() => this._state()?.pending ?? []);
+  readonly purchasable = computed(() => this._state()?.purchasable ?? []);
 
   /** Toplam saniyelik otomatik uretim — ust seritte gosterilir. */
   readonly totalPerSecond = computed(() =>
@@ -329,6 +331,18 @@ export class GameService {
    */
   watchAd(): Observable<AdRewardResult> {
     return this.http.post<AdRewardResult>(`${environment.apiUrl}/ads/simulate-watch`, {});
+  }
+
+  /**
+   * Yeni tesis satin alir.
+   *
+   * Fiyat GONDERILMEZ; sunucu denge tablosundan okur ve on kosulu kendisi
+   * dogrular. Arayuzdeki kilit gostergesi yalnizca bilgilendirmedir.
+   */
+  buyFacility(facilityTypeId: number): Observable<BuyFacilityResult> {
+    return this.http
+      .post<BuyFacilityResult>(`${this.apiUrl}/facility/${facilityTypeId}/buy`, {})
+      .pipe(tap((r) => this.syncClock(r.serverTime)));
   }
 
   unlockClick(clickTypeId: number): Observable<UnlockResult> {

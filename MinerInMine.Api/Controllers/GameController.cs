@@ -185,4 +185,22 @@ public class GameController : ControllerBase
         var r = await _gameService.UnlockClickAsync(userId.Value, clickTypeId);
         return r.Success ? Ok(r.Data) : BadRequest(new { message = r.ErrorMessage });
     }
+
+    /// <summary>Yeni tesis satin alir.</summary>
+    /// <remarks>
+    /// Tesisler sadece parayla degil ILERLEMEYLE de kapilanir: onceki tesisin
+    /// belirli bir seviyeye ulasmasi gerekir (orn. Altin Damari icin Demir Ocagi
+    /// seviye 10). Bu kosul veritabaninda tanimli, kodda sabit degil.
+    /// </remarks>
+    [HttpPost("facility/{facilityTypeId:int}/buy")]
+    [ProducesResponseType(typeof(BuyFacilityResultDto), StatusCodes.Status200OK)]
+    [ProducesResponseType(StatusCodes.Status400BadRequest)]
+    public async Task<IActionResult> BuyFacility(int facilityTypeId)
+    {
+        var userId = User.GetUserId();
+        if (userId is null) return Unauthorized(new { message = "Geçersiz token." });
+
+        var r = await _gameService.BuyFacilityAsync(userId.Value, facilityTypeId);
+        return r.Success ? Ok(r.Data) : BadRequest(new { message = r.ErrorMessage });
+    }
 }

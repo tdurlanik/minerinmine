@@ -12,6 +12,7 @@ public record HireDbResult(int ReturnCode, string? ErrorMessage, HireMinerResult
 public record SellDbResult(int ReturnCode, string? ErrorMessage, SellResultDto? Data);
 public record PurchaseDbResult(int ReturnCode, string? ErrorMessage, PurchaseResultDto? Data);
 public record UnlockDbResult(int ReturnCode, string? ErrorMessage, UnlockResultDto? Data);
+public record BuyFacilityDbResult(int ReturnCode, string? ErrorMessage, BuyFacilityResultDto? Data);
 
 /// <summary>sp_GetPlayerState son sonuc kumesi: sunucu saati + tamamlanan gelistirme sayisi.</summary>
 internal record StateTailRow(DateTime ServerTime, int CompletedUpgrades);
@@ -27,6 +28,7 @@ public interface IGameRepository
     Task<SellDbResult> SellAsync(int userId, int resourceTypeId, long amount);
     Task<PurchaseDbResult> BuyUpgradeAsync(int userId, int upgradeTypeId);
     Task<UnlockDbResult> UnlockClickAsync(int userId, int clickTypeId);
+    Task<BuyFacilityDbResult> BuyFacilityAsync(int userId, int facilityTypeId);
 }
 
 /// <summary>
@@ -64,6 +66,7 @@ public class GameRepository : IGameRepository
         var miners = (await multi.ReadAsync<MinerDto>()).ToList();
         var upgrades = (await multi.ReadAsync<UpgradeDto>()).ToList();
         var pending = (await multi.ReadAsync<PendingProductionDto>()).ToList();
+        var purchasable = (await multi.ReadAsync<PurchasableFacilityDto>()).ToList();
         var tail = await multi.ReadSingleAsync<StateTailRow>();
 
         return new PlayerStateDto
@@ -75,6 +78,7 @@ public class GameRepository : IGameRepository
             Miners = miners,
             Upgrades = upgrades,
             Pending = pending,
+            Purchasable = purchasable,
             // Son sonuc kumesi artik iki sutun donduruyor (ServerTime + CompletedUpgrades),
             // bu yuzden duz DateTime yerine kucuk bir kayit tipine okuyoruz.
             ServerTime = tail.ServerTime,
@@ -236,5 +240,26 @@ public class GameRepository : IGameRepository
             "sp_UnlockClickType", p, commandType: CommandType.StoredProcedure);
 
         return new UnlockDbResult(p.Get<int>("@ReturnValue"), p.Get<string?>("@ErrorMessage"), data);
+    }
+
+    /// <summary>
+    /// Yeni tesis satin alir. Bedel ve on kosul kontrolu SP icinde.
+    /// Istemci fiyat gonderemez; denge tablosundan okunur.
+    /// </summary>
+    public async Task<BuyFacilityDbResult> BuyFacilityAsync(int userId, int facilityTypeId)
+    {
+        using var connection = _factory.CreateConnection();
+
+        var p = new DynamicParameters();
+        p.Add("@UserId", userId, DbType.Int32);
+        p.Add("@FacilityTypeId", facilityTypeId, DbType.Int32);
+        p.Add("@ErrorMessage", dbType: DbType.String, size: 255, direction: ParameterDirection.Output);
+        p.Add("@ReturnValue", dbType: DbType.Int32, direction: ParameterDirection.ReturnValue);
+
+        var data = await connection.QuerySingleOrDefaultAsync<BuyFacilityResultDto>(
+            "sp_BuyFacility", p, commandType: CommandType.StoredProcedure);
+
+        return new BuyFacilityDbResult(
+            p.Get<int>("@ReturnValue"), p.Get<string?>("@ErrorMessage"), data);
     }
 }
