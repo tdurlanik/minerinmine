@@ -134,6 +134,16 @@ public class UpgradeFinishedDto
 
     /// <summary>Odeme ile atlanan sure — "3 dakika kazandin" bildirimi icin.</summary>
     public int SkippedSeconds { get; set; }
+
+    /// <summary>
+    /// Bugun kalan hizlandirma hakki.
+    ///
+    /// Gunluk sinir var cunku tek para birimi kullaniyoruz: oyuncu atlamak icin
+    /// odeyecegi Kristal'i kendisi uretiyor. Simulasyon, sinirsiz atlamada
+    /// oyunun 7 dakikada bittigini olctu.
+    /// </summary>
+    public int RemainingSkips { get; set; }
+
     public DateTime ServerTime { get; set; }
 }
 

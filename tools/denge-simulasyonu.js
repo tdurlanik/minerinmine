@@ -102,6 +102,10 @@ function dengeyiYukle() {
       'SELECT Id, Code, ClickTypeId, HireCost, MaxCount FROM MinerTypes ORDER BY DisplayOrder',
       ['id', 'kod', 'kazmaId', 'ucret', 'tavan']
     ),
+    madenciUcretleri: sorgula(
+      'SELECT MinerTypeId, Count, Cost FROM MinerLevels ORDER BY MinerTypeId, Count',
+      ['madenciId', 'adet', 'maliyet']
+    ),
     guclendirmeler: sorgula(
       'SELECT Id, Code, EffectType, EffectValue, MaxLevel FROM UpgradeTypes ORDER BY DisplayOrder',
       ['id', 'kod', 'etkiTuru', 'etkiDegeri', 'maxSeviye']
@@ -138,7 +142,9 @@ function simule(denge, { saat = 24, aceleci = false } = {}) {
   const toplamSaniye = saat * 3600;
 
   const ayar = (a) => Number(denge.ayarlar.find((x) => x.anahtar === a)?.deger ?? 0);
-  const dakikaBasinaKristal = ayar('INSTANT_FINISH_PER_MINUTE');
+  const madenciVerimi = ayar('MINER_EFFICIENCY');
+  const atlamaCarpani = ayar('INSTANT_FINISH_MULTIPLIER');
+  const gunlukAtlamaSiniri = ayar('INSTANT_FINISH_DAILY_LIMIT') || 999999;
 
   const satisDegeri = {};
   denge.kaynaklar.forEach((k) => (satisDegeri[k.kod] = k.satisDegeri));
@@ -155,7 +161,8 @@ function simule(denge, { saat = 24, aceleci = false } = {}) {
     madenciler: {},                       // "tesisId:madenciId" -> adet
     acikKazmalar: new Set([denge.kazmalar[0].id]),
     guclendirmeler: {},                   // guclendirmeId -> seviye
-    kilometreTaslari: []
+    kilometreTaslari: [],
+    atlamalar: []            // son 24 saatteki atlama zamanlari (gunluk sinir icin)
   };
 
   const carpan = (etkiTuru) =>
@@ -183,7 +190,8 @@ function simule(denge, { saat = 24, aceleci = false } = {}) {
         const md = denge.madenciler.find((m) => m.kazmaId === kz.id);
         if (md) {
           const adet = d.madenciler[`${t.id}:${md.id}`] ?? 0;
-          toplam += birim * adet * madenciCarpani * deger;    // madenciler
+          // Madenci, manuel tiklamanin yalnizca bir kismi kadar uretir (MINER_EFFICIENCY)
+          toplam += birim * adet * madenciCarpani * deger * madenciVerimi;
         }
       }
     }
@@ -223,7 +231,11 @@ function simule(denge, { saat = 24, aceleci = false } = {}) {
           () => (durum.madenciler[anahtar] = adet + 1),
           () => (durum.madenciler[anahtar] = adet)
         );
-        liste.push({ tur: 'madenci', anahtar, ad: md.kod, tesis: t, maliyet: md.ucret, fark });
+        const ucret = denge.madenciUcretleri.find(
+          (u) => u.madenciId === md.id && u.adet === adet + 1
+        );
+        if (!ucret) continue;
+        liste.push({ tur: 'madenci', anahtar, ad: md.kod, tesis: t, maliyet: ucret.maliyet, fark });
       }
     }
 
@@ -290,14 +302,21 @@ function simule(denge, { saat = 24, aceleci = false } = {}) {
     // 2) Gelir birikir (maden aninda satiliyor kabulu)
     durum.kristal += gelirSn();
 
-    // 3) Aceleci oyuncu: devam eden insaatlari parayla bitirir
+    // 3) Aceleci oyuncu: devam eden insaatlari parayla bitirir (gunluk sinira kadar)
     if (aceleci) {
+      // Son 24 saatin disinda kalan atlamalari listeden dusur
+      durum.atlamalar = durum.atlamalar.filter((t) => t > durum.zaman - 86400);
       for (const t of durum.tesisler) {
         if (t.insaatBitis === null) continue;
-        const kalanDk = Math.ceil((t.insaatBitis - durum.zaman) / 60);
-        const bedel = Math.max(dakikaBasinaKristal, kalanDk * dakikaBasinaKristal);
+        // ORANSAL bedel: yukseltme maliyeti x kalan oran x carpan
+        const hedef = seviyeBilgisi(t.id, t.seviye + 1);
+        const toplamSn = hedef.dakika * 60;
+        const kalanSn = t.insaatBitis - durum.zaman;
+        const bedel = Math.max(1, Math.ceil(hedef.maliyet * (kalanSn / toplamSn) * atlamaCarpani));
+        if (durum.atlamalar.length >= gunlukAtlamaSiniri) break;   // gunluk hak doldu
         if (durum.kristal >= bedel) {
           durum.kristal -= bedel;
+          durum.atlamalar.push(durum.zaman);
           t.seviye++;
           t.insaatBitis = null;
           if (t.seviye === 10 || t.seviye === 25 || t.seviye === 50) {

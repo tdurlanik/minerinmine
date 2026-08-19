@@ -163,7 +163,8 @@ export class GameComponent implements OnInit {
         const dakika = Math.max(1, Math.round(sonuc.skippedSeconds / 60));
         this.bilgiMesaji.set(
           facility.name + ' seviye ' + sonuc.newLevel + ' oldu. ' +
-          dakika + ' dakika beklemekten kurtuldun.'
+          dakika + ' dakika beklemekten kurtuldun. ' +
+          'Bugün kalan hızlandırma hakkın: ' + sonuc.remainingSkips
         );
         this.durumuYenile();
       },

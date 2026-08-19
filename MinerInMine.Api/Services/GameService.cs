@@ -83,23 +83,9 @@ public class GameService : IGameService
     /// </summary>
     public async Task<ServiceResult<UpgradeStartedDto>> StartUpgradeAsync(int userId, int facilityTypeId)
     {
-        var result = await _repository.StartUpgradeAsync(userId, facilityTypeId);
-
-        if (result.ReturnCode == 0 && result.Data is not null)
-        {
-            return ServiceResult<UpgradeStartedDto>.Ok(result.Data);
-        }
-
-        if (result.ReturnCode >= -4)
-        {
-            return ServiceResult<UpgradeStartedDto>.Fail(result.ErrorMessage ?? "Gelistirme baslatilamadi.");
-        }
-
-        _logger.LogError(
-            "sp_StartFacilityUpgrade beklenmeyen sonuc. UserId={UserId} Facility={Facility} RC={RC} Hata={Error}",
-            userId, facilityTypeId, result.ReturnCode, result.ErrorMessage);
-
-        return ServiceResult<UpgradeStartedDto>.Fail("Geliştirme sırasında beklenmeyen bir hata oluştu.");
+        var r = await _repository.StartUpgradeAsync(userId, facilityTypeId);
+        return Yorumla(r.ReturnCode, r.ErrorMessage, r.Data,
+            "Geliştirme başlatılamadı.", userId, "sp_StartFacilityUpgrade");
     }
 
     /// <summary>
@@ -108,23 +94,9 @@ public class GameService : IGameService
     /// </summary>
     public async Task<ServiceResult<UpgradeFinishedDto>> FinishUpgradeNowAsync(int userId, int facilityTypeId)
     {
-        var result = await _repository.FinishUpgradeNowAsync(userId, facilityTypeId);
-
-        if (result.ReturnCode == 0 && result.Data is not null)
-        {
-            return ServiceResult<UpgradeFinishedDto>.Ok(result.Data);
-        }
-
-        if (result.ReturnCode >= -4)
-        {
-            return ServiceResult<UpgradeFinishedDto>.Fail(result.ErrorMessage ?? "İşlem tamamlanamadı.");
-        }
-
-        _logger.LogError(
-            "sp_FinishUpgradeNow beklenmeyen sonuc. UserId={UserId} Facility={Facility} RC={RC} Hata={Error}",
-            userId, facilityTypeId, result.ReturnCode, result.ErrorMessage);
-
-        return ServiceResult<UpgradeFinishedDto>.Fail("İşlem sırasında beklenmeyen bir hata oluştu.");
+        var r = await _repository.FinishUpgradeNowAsync(userId, facilityTypeId);
+        return Yorumla(r.ReturnCode, r.ErrorMessage, r.Data,
+            "İşlem tamamlanamadı.", userId, "sp_FinishUpgradeNow");
     }
 
     /// <summary>
@@ -192,6 +164,12 @@ public class GameService : IGameService
 
     /// <summary>
     /// SP RETURN kodlarini ServiceResult'a ceviren ortak yardimci.
+    ///
+    /// NOT: Bu yardimci once yalnizca Gun 4 metotlarinda kullaniliyordu; gelistirme
+    /// metotlari kendi icinde "RC >= -4" esigi tasiyordu. Gunluk atlama siniri -5
+    /// donunce o metotlar hatayi "beklenmeyen" sayip kullaniciya genel mesaj
+    /// gosterdi. Esik iki yerde tekrarlandigi icin biri unutulmustu — hepsi bu
+    /// yardimciya tasindi, esik artik TEK YERDE.
     ///
     /// Kural: 0 = basarili, -1..-9 = beklenen is kurali hatasi (kullaniciya
     /// SP'nin mesaji gosterilir), digerleri = beklenmeyen hata (loglanir ve

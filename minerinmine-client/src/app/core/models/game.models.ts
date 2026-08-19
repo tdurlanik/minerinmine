@@ -205,5 +205,8 @@ export interface UpgradeFinished {
   cost: number;
   newBalance: number;
   skippedSeconds: number;
+
+  /** Bugun kalan hizlandirma hakki (gunluk sinir). */
+  remainingSkips: number;
   serverTime: string;
 }
