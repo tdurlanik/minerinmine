@@ -33,7 +33,7 @@ export const routes: Routes = [
   },
   {
     path: 'dashboard',
-    title: 'Maden Merkezi · MinerInMine',
+    title: 'İstatistikler · MinerInMine',
     canActivate: [authGuard], // giriş yapmamışsa login'e gönder
     loadComponent: () =>
       import('./features/dashboard/dashboard').then((m) => m.DashboardComponent)

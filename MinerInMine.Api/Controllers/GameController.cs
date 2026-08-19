@@ -39,6 +39,26 @@ public class GameController : ControllerBase
         return Ok(state);
     }
 
+    /// <summary>Oyuncunun oynanis istatistiklerini doner (istatistik ekrani).</summary>
+    /// <remarks>
+    /// Rakamlarin tamami Transactions gunlugunden turetilir: "Kristal'i en cok
+    /// neye harcadin" sorusunun cevabi hicbir tabloda YAZMAZ, yalnizca olay
+    /// gunlugu en bastan tutuldugu icin hesaplanabilir.
+    /// </remarks>
+    [HttpGet("stats")]
+    [ProducesResponseType(typeof(PlayerStatsDto), StatusCodes.Status200OK)]
+    [ProducesResponseType(StatusCodes.Status401Unauthorized)]
+    public async Task<IActionResult> GetStats()
+    {
+        var userId = User.GetUserId();
+        if (userId is null)
+        {
+            return Unauthorized(new { message = "Geçersiz token." });
+        }
+
+        return Ok(await _gameService.GetStatsAsync(userId.Value));
+    }
+
     /// <summary>
     /// Kazma yapar.
     /// </summary>

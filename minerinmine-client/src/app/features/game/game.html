@@ -1,5 +1,9 @@
 <div class="oyun">
 
+  <!-- ======================= ÜST ŞERİT =======================
+       Sadeleştirildi: burada yalnızca KİMLİK ve KAYNAK durur.
+       Gezinme bağlantıları sağdaki menüye toplandı, böylece şerit
+       dar ekranlarda üç satıra taşmıyor. -->
   <header class="ust">
     <div class="ust__marka">
       <span class="ust__ikon">⛏️</span>
@@ -17,22 +21,35 @@
           <span class="kaynak__deger">{{ bicimle(kaynak.amount) }}</span>
         </div>
       }
+
+      @if (game.totalPerSecond() > 0) {
+        <div class="kaynak oto">
+          <span class="kaynak__ad">OTOMATİK</span>
+          <span class="kaynak__deger">{{ game.totalPerSecond() }}/sn</span>
+        </div>
+      }
     </div>
 
-    @if (game.totalPerSecond() > 0) {
-      <div class="oto">
-        <span class="oto__ad">OTOMATİK</span>
-        <span class="oto__deger">{{ game.totalPerSecond() }}/sn</span>
-      </div>
-    }
+    <!-- Gezinme menüsü. Açıkken arkada görünmez bir örtü var: dışarı
+         tıklandığında menü kapansın diye (yaygın "click outside" çözümü). -->
+    <div class="menu">
+      <button type="button" class="menu__acici" [class.menu__acici--acik]="menuAcik()"
+              aria-haspopup="true" [attr.aria-expanded]="menuAcik()"
+              (click)="menuyuAcKapat()">
+        ☰ Menü
+      </button>
 
-    <div class="ust__butonlar">
-      <a class="mim-buton mim-buton--sade ust__buton" routerLink="/leaderboard">🏆 Sıralama</a>
-      @if (auth.isAdmin()) {
-        <a class="mim-buton mim-buton--sade ust__buton" routerLink="/admin">🛡️ Yönetim</a>
+      @if (menuAcik()) {
+        <div class="menu__ortu" (click)="menuyuKapat()"></div>
+        <nav class="menu__liste">
+          <a class="menu__oge" routerLink="/leaderboard" (click)="menuyuKapat()">🏆 Sıralama</a>
+          <a class="menu__oge" routerLink="/dashboard" (click)="menuyuKapat()">📊 İstatistikler</a>
+          @if (auth.isAdmin()) {
+            <a class="menu__oge" routerLink="/admin" (click)="menuyuKapat()">🛡️ Yönetim</a>
+          }
+          <button type="button" class="menu__oge menu__oge--cikis" (click)="cikisYap()">Çıkış</button>
+        </nav>
       }
-      <a class="mim-buton mim-buton--sade ust__buton" routerLink="/dashboard">Panel</a>
-      <button type="button" class="mim-buton mim-buton--sade ust__buton" (click)="cikisYap()">Çıkış</button>
     </div>
   </header>
 
@@ -40,19 +57,15 @@
 
     @if (yukleniyor()) {
       <p class="bilgi">Maden hazırlanıyor...</p>
-    } @else if (hataMesaji() && game.facilities().length === 0) {
+    } @else if (hataMesaji()) {
+      <!-- Buraya yalnızca ilk yükleme başarısız olduğunda düşülür: çizilecek
+           hiçbir veri yok. Geçici mesajların tamamı artık toast olarak akıyor. -->
       <div class="mim-uyari"><span>⚠️</span><span>{{ hataMesaji() }}</span></div>
     } @else {
 
-      @if (hataMesaji()) {
-        <div class="mim-uyari"><span>⏳</span><span>{{ hataMesaji() }}</span></div>
-      }
-
-      @if (bilgiMesaji()) {
-        <div class="mim-uyari mim-uyari--bilgi"><span>✅</span><span>{{ bilgiMesaji() }}</span></div>
-      }
-
-      <!-- ============ BIRIKMIS URETIM ============ -->
+      <!-- ============ BİRİKMİŞ ÜRETİM ============
+           Tesisten bağımsız, oyunun tamamını ilgilendiren bir kutu olduğu için
+           sekmelerin ÜSTÜNDE, her sekmede görünür durumda kalıyor. -->
       <section class="uretim">
         <div class="uretim__ust">
           <div>
@@ -65,25 +78,61 @@
               <p class="uretim__bilgi">Henüz madencin yok. Tesislerden madenci alarak üretimi otomatikleştir.</p>
             }
           </div>
-          <button type="button" class="mim-buton uretim__buton"
-                  [disabled]="!game.hasPending()" (click)="topla()">
-            📦 Topla
-          </button>
+
+          <div class="uretim__butonlar">
+            <button type="button" class="mim-buton uretim__buton"
+                    [disabled]="!game.hasPending()" (click)="topla()">
+              📦 Topla
+            </button>
+
+            <!-- Reklam odulu: gercekte odulu reklam agi sunucumuza imzali olarak
+                 bildirir; burada o akisi simule ediyoruz. -->
+            <button type="button" class="mim-buton mim-buton--sade reklam"
+                    [disabled]="islemdeki() === -1" (click)="reklamIzle()">
+              🎬 Reklam · +250
+            </button>
+          </div>
         </div>
         <p class="uretim__not">
           Madenciler sen oyunda değilken de çalışır (en fazla 8 saatlik birikim).
         </p>
-
-        <!-- Reklam odulu: gercekte odulu reklam agi sunucumuza imzali olarak
-             bildirir; burada o akisi simule ediyoruz. -->
-        <button type="button" class="mim-buton mim-buton--sade reklam"
-                [disabled]="islemdeki() === -1" (click)="reklamIzle()">
-          🎬 Reklam izle · +250 Kristal
-        </button>
       </section>
 
-      @for (tesis of game.facilities(); track tesis.facilityTypeId) {
-        <section class="tesis">
+      <!-- ============ SEKME ŞERİDİ ============
+           role="tablist" + aria-selected: klavye ve ekran okuyucu bunların
+           bir sekme grubu olduğunu ancak bu etiketlerle anlar. -->
+      <nav class="sekmeler" role="tablist">
+        @for (tesis of game.facilities(); track tesis.facilityTypeId) {
+          <button type="button" role="tab" class="sekme"
+                  [class.sekme--aktif]="aktifSekme() === tesis.facilityTypeId"
+                  [attr.aria-selected]="aktifSekme() === tesis.facilityTypeId"
+                  (click)="sekmeSec(tesis.facilityTypeId)">
+            <span class="sekme__ad">{{ tesis.name }}</span>
+            <span class="sekme__alt">sv {{ tesis.level }}</span>
+
+            <!-- Sekme kapalıyken de haber veren küçük işaretler -->
+            @if (tesis.upgradeCompletesAt) {
+              <span class="sekme__isaret sekme__isaret--calisma" title="Geliştirme sürüyor">⚒️</span>
+            } @else if (gelistirilebilir(tesis)) {
+              <span class="sekme__isaret" title="Geliştirilebilir">⬆️</span>
+            }
+          </button>
+        }
+
+        <button type="button" role="tab" class="sekme sekme--dukkan"
+                [class.sekme--aktif]="aktifSekme() === 0"
+                [attr.aria-selected]="aktifSekme() === 0"
+                (click)="sekmeSec(0)">
+          <span class="sekme__ad">🛒 Dükkân</span>
+          @if (dukkanFirsati() > 0) {
+            <span class="sekme__rozet">{{ dukkanFirsati() }}</span>
+          }
+        </button>
+      </nav>
+
+      <!-- ======================= TESİS SEKMESİ ======================= -->
+      @if (aktifTesis(); as tesis) {
+        <section class="tesis" role="tabpanel">
 
           <div class="tesis__ust">
             <div>
@@ -131,42 +180,54 @@
             }
           </div>
 
-          <!-- ================= MADENCILER ================= -->
-          <div class="madenciler">
-            @for (madenci of game.minersOf(tesis.facilityTypeId); track madenci.minerTypeId) {
-              <div class="madenci" [class.madenci--kilitli]="!madenci.isAvailable">
-                <div class="madenci__sol">
-                  <span class="madenci__ad">{{ madenci.name }}</span>
-                  <span class="madenci__bilgi">
-                    @if (madenci.isAvailable) {
-                      {{ madenci.count }}/{{ madenci.maxCount }} · her biri {{ madenci.perSecondEach }}/sn
-                    } @else {
-                      🔒 önce {{ madenci.clickName }} açılmalı
-                    }
-                  </span>
-                </div>
-                <button type="button" class="madenci__buton"
-                        [disabled]="!madenci.isAvailable || madenci.count >= madenci.maxCount
-                                    || kristal() < madenci.hireCost
-                                    || islemdeki() === madenci.minerTypeId"
-                        (click)="madenciAl(madenci)">
-                  @if (madenci.count >= madenci.maxCount) { Dolu }
-                  @else { +1 · {{ bicimle(madenci.hireCost) }} }
-                </button>
+          <!-- ================= MADENCİLER (katlanabilir) ================= -->
+          <div class="katlanir">
+            <button type="button" class="katlanir__baslik"
+                    [attr.aria-expanded]="madencilerAcikMi(tesis.facilityTypeId)"
+                    (click)="madencileriKatla(tesis.facilityTypeId)">
+              <span class="katlanir__ok" [class.katlanir__ok--acik]="madencilerAcikMi(tesis.facilityTypeId)">▸</span>
+              <span>👷 Madenciler</span>
+              @if (madenciFirsati(tesis.facilityTypeId) > 0) {
+                <span class="sekme__rozet">{{ madenciFirsati(tesis.facilityTypeId) }}</span>
+              }
+            </button>
+
+            @if (madencilerAcikMi(tesis.facilityTypeId)) {
+              <div class="madenciler">
+                @for (madenci of game.minersOf(tesis.facilityTypeId); track madenci.minerTypeId) {
+                  <div class="madenci" [class.madenci--kilitli]="!madenci.isAvailable">
+                    <div class="madenci__sol">
+                      <span class="madenci__ad">{{ madenci.name }}</span>
+                      <span class="madenci__bilgi">
+                        @if (madenci.isAvailable) {
+                          {{ madenci.count }}/{{ madenci.maxCount }} · her biri {{ madenci.perSecondEach }}/sn
+                        } @else {
+                          🔒 önce {{ madenci.clickName }} açılmalı
+                        }
+                      </span>
+                    </div>
+                    <button type="button" class="madenci__buton"
+                            [disabled]="!madenci.isAvailable || madenci.count >= madenci.maxCount
+                                        || kristal() < madenci.hireCost
+                                        || islemdeki() === madenci.minerTypeId"
+                            (click)="madenciAl(madenci)">
+                      @if (madenci.count >= madenci.maxCount) { Dolu }
+                      @else { +1 · {{ bicimle(madenci.hireCost) }} }
+                    </button>
+                  </div>
+                }
               </div>
             }
           </div>
 
-          <!-- ================= GELISTIRME BOLUMU ================= -->
+          <!-- ================= GELİŞTİRME BÖLÜMÜ ================= -->
           <div class="gelistirme">
 
             @if (tesis.upgradeCompletesAt) {
               <!-- Devam eden calisma: geri sayim + aninda bitirme -->
               <div class="calisma">
                 <div class="calisma__ust">
-                  <span class="calisma__etiket">
-                    ⚒️ Seviye {{ tesis.level + 1 }} çalışması
-                  </span>
+                  <span class="calisma__etiket">⚒️ Seviye {{ tesis.level + 1 }} çalışması</span>
                   <span class="calisma__sayac">{{ gelistirmeKalan(tesis) }}</span>
                 </div>
 
@@ -186,11 +247,9 @@
               </div>
 
             } @else if (tesis.nextLevelCost === null) {
-              <!-- Son seviye -->
               <p class="gelistirme__son">🏆 Son seviye</p>
 
             } @else {
-              <!-- Gelistirme baslatilabilir -->
               <div class="gelistirme__ozet">
                 <span>
                   Seviye {{ tesis.level + 1 }}:
@@ -216,115 +275,124 @@
         </section>
       }
 
-      <!-- ============ YENI TESISLER ============ -->
-      @if (game.purchasable().length > 0) {
-        <section class="dukkan">
-          <h3 class="dukkan__baslik">🏗️ Yeni Tesisler</h3>
-          <p class="dukkan__aciklama">
-            Her tesis farklı bir maden çıkarır. Açmak için önceki tesisi belirli
-            bir seviyeye getirmen gerekir.
-          </p>
+      <!-- ======================= DÜKKÂN SEKMESİ =======================
+           Dört ayrı bölüm (yeni tesis / satış / güçlendirme / kazma) artık
+           oyun ekranını uzatmıyor; hepsi bu sekmenin altında toplandı. -->
+      @if (aktifSekme() === 0) {
+        <div role="tabpanel">
 
-          @for (tesis of game.purchasable(); track tesis.facilityTypeId) {
-            <div class="urun" [class.urun--kilitli]="!tesis.isUnlocked">
-              <div class="urun__sol">
-                <span class="urun__ad">
-                  {{ tesis.name }}
-                  <span class="urun__sv">{{ tesis.resourceName }} çıkarır</span>
-                </span>
-                @if (tesis.isUnlocked) {
-                  <span class="urun__bilgi">
-                    Kazma başına {{ tesis.startProduction }} {{ tesis.resourceName }} ile başlar
+          <!-- ============ SATIŞ ============ -->
+          @if (satilabilirler().length > 0) {
+            <section class="dukkan">
+              <h3 class="dukkan__baslik">💰 Maden Satışı</h3>
+              <p class="dukkan__aciklama">Madenlerini Kristal'e çevir. Kristal her şeyi satın alır.</p>
+
+              @for (kaynak of satilabilirler(); track kaynak.resourceTypeId) {
+                <div class="satis">
+                  <span class="satis__ad">
+                    {{ kaynak.name }}
+                    <span class="satis__birim">birimi {{ kaynak.sellValue }} Kristal</span>
                   </span>
-                } @else {
-                  <span class="urun__bilgi urun__bilgi--kilit">
-                    🔒 {{ tesis.requiredFacilityName }} seviye {{ tesis.requiredLevel }} olmalı
-                    (şu an {{ tesis.requiredCurrentLevel }})
-                  </span>
-                }
-              </div>
-              <button type="button" class="urun__buton"
-                      [disabled]="!tesisAlinabilir(tesis) || islemdeki() === -tesis.facilityTypeId"
-                      (click)="tesisAl(tesis)">
-                @if (!tesis.isUnlocked) { Kilitli }
-                @else { {{ bicimle(tesis.cost) }} Kristal }
-              </button>
-            </div>
+                  <input class="satis__giris" type="number" min="1" [max]="kaynak.amount"
+                         [value]="kaynak.amount"
+                         (input)="miktarDegisti(kaynak.resourceTypeId, $event)" />
+                  <button type="button" class="satis__buton"
+                          [disabled]="islemdeki() === kaynak.resourceTypeId"
+                          (click)="sat(kaynak.resourceTypeId, kaynak.amount)">
+                    Sat
+                  </button>
+                </div>
+              }
+            </section>
           }
-        </section>
-      }
 
-      <!-- ============ SATIS ============ -->
-      @if (satilabilirler().length > 0) {
-        <section class="dukkan">
-          <h3 class="dukkan__baslik">💰 Maden Satışı</h3>
-          <p class="dukkan__aciklama">Madenlerini Kristal'e çevir. Kristal her şeyi satın alır.</p>
+          <!-- ============ YENİ TESİSLER ============ -->
+          @if (game.purchasable().length > 0) {
+            <section class="dukkan">
+              <h3 class="dukkan__baslik">🏗️ Yeni Tesisler</h3>
+              <p class="dukkan__aciklama">
+                Her tesis farklı bir maden çıkarır. Açmak için önceki tesisi belirli
+                bir seviyeye getirmen gerekir.
+              </p>
 
-          @for (kaynak of satilabilirler(); track kaynak.resourceTypeId) {
-            <div class="satis">
-              <span class="satis__ad">
-                {{ kaynak.name }}
-                <span class="satis__birim">birimi {{ kaynak.sellValue }} Kristal</span>
-              </span>
-              <input class="satis__giris" type="number" min="1" [max]="kaynak.amount"
-                     [value]="kaynak.amount"
-                     (input)="miktarDegisti(kaynak.resourceTypeId, $event)" />
-              <button type="button" class="satis__buton"
-                      [disabled]="islemdeki() === kaynak.resourceTypeId"
-                      (click)="sat(kaynak.resourceTypeId, kaynak.amount)">
-                Sat
-              </button>
-            </div>
+              @for (tesis of game.purchasable(); track tesis.facilityTypeId) {
+                <div class="urun" [class.urun--kilitli]="!tesis.isUnlocked">
+                  <div class="urun__sol">
+                    <span class="urun__ad">
+                      {{ tesis.name }}
+                      <span class="urun__sv">{{ tesis.resourceName }} çıkarır</span>
+                    </span>
+                    @if (tesis.isUnlocked) {
+                      <span class="urun__bilgi">
+                        Kazma başına {{ tesis.startProduction }} {{ tesis.resourceName }} ile başlar
+                      </span>
+                    } @else {
+                      <span class="urun__bilgi urun__bilgi--kilit">
+                        🔒 {{ tesis.requiredFacilityName }} seviye {{ tesis.requiredLevel }} olmalı
+                        (şu an {{ tesis.requiredCurrentLevel }})
+                      </span>
+                    }
+                  </div>
+                  <button type="button" class="urun__buton"
+                          [disabled]="!tesisAlinabilir(tesis) || islemdeki() === -tesis.facilityTypeId"
+                          (click)="tesisAl(tesis)">
+                    @if (!tesis.isUnlocked) { Kilitli }
+                    @else { {{ bicimle(tesis.cost) }} Kristal }
+                  </button>
+                </div>
+              }
+            </section>
           }
-        </section>
-      }
 
-      <!-- ============ GUCLENDIRMELER ============ -->
-      <section class="dukkan">
-        <h3 class="dukkan__baslik">⚡ Kalıcı Güçlendirmeler</h3>
-        @for (g of game.upgrades(); track g.upgradeTypeId) {
-          <div class="urun">
-            <div class="urun__sol">
-              <span class="urun__ad">{{ g.name }} <span class="urun__sv">sv {{ g.level }}/{{ g.maxLevel }}</span></span>
-              <span class="urun__bilgi">{{ g.description }}</span>
-            </div>
-            <button type="button" class="urun__buton"
-                    [disabled]="g.nextLevelCost === null || kristal() < g.nextLevelCost
-                                || islemdeki() === g.upgradeTypeId"
-                    (click)="guclendirmeAl(g)">
-              @if (g.nextLevelCost === null) { Son seviye }
-              @else { {{ bicimle(g.nextLevelCost) }} Kristal }
-            </button>
-          </div>
-        }
-      </section>
-
-      <!-- ============ KAZMA TURLERI ============ -->
-      @if (game.clickTypes().length > game.unlockedClicks().length) {
-        <section class="dukkan">
-          <h3 class="dukkan__baslik">🔓 Yeni Kazma Türleri</h3>
-          <p class="dukkan__aciklama">
-            Uzun kazmalar saniye başına daha verimlidir. Açtığın kazmanın madencisini de işe alabilirsin.
-          </p>
-
-          @for (kazma of game.clickTypes(); track kazma.clickTypeId) {
-            @if (!kazma.isUnlocked) {
+          <!-- ============ GÜÇLENDİRMELER ============ -->
+          <section class="dukkan">
+            <h3 class="dukkan__baslik">⚡ Kalıcı Güçlendirmeler</h3>
+            @for (g of game.upgrades(); track g.upgradeTypeId) {
               <div class="urun">
                 <div class="urun__sol">
-                  <span class="urun__ad">{{ kazma.name }}</span>
-                  <span class="urun__bilgi">
-                    {{ kazma.cooldownSeconds }} sn bekleme · ×{{ kazma.yieldMultiplier }} verim
-                  </span>
+                  <span class="urun__ad">{{ g.name }} <span class="urun__sv">sv {{ g.level }}/{{ g.maxLevel }}</span></span>
+                  <span class="urun__bilgi">{{ g.description }}</span>
                 </div>
                 <button type="button" class="urun__buton"
-                        [disabled]="kristal() < kazma.unlockCost || islemdeki() === kazma.clickTypeId"
-                        (click)="kazmaAc(kazma)">
-                  {{ bicimle(kazma.unlockCost) }} Kristal
+                        [disabled]="g.nextLevelCost === null || kristal() < g.nextLevelCost
+                                    || islemdeki() === g.upgradeTypeId"
+                        (click)="guclendirmeAl(g)">
+                  @if (g.nextLevelCost === null) { Son seviye }
+                  @else { {{ bicimle(g.nextLevelCost) }} Kristal }
                 </button>
               </div>
             }
+          </section>
+
+          <!-- ============ KAZMA TÜRLERİ ============ -->
+          @if (game.clickTypes().length > game.unlockedClicks().length) {
+            <section class="dukkan">
+              <h3 class="dukkan__baslik">🔓 Yeni Kazma Türleri</h3>
+              <p class="dukkan__aciklama">
+                Uzun kazmalar saniye başına daha verimlidir. Açtığın kazmanın madencisini de işe alabilirsin.
+              </p>
+
+              @for (kazma of game.clickTypes(); track kazma.clickTypeId) {
+                @if (!kazma.isUnlocked) {
+                  <div class="urun">
+                    <div class="urun__sol">
+                      <span class="urun__ad">{{ kazma.name }}</span>
+                      <span class="urun__bilgi">
+                        {{ kazma.cooldownSeconds }} sn bekleme · ×{{ kazma.yieldMultiplier }} verim
+                      </span>
+                    </div>
+                    <button type="button" class="urun__buton"
+                            [disabled]="kristal() < kazma.unlockCost || islemdeki() === kazma.clickTypeId"
+                            (click)="kazmaAc(kazma)">
+                      {{ bicimle(kazma.unlockCost) }} Kristal
+                    </button>
+                  </div>
+                }
+              }
+            </section>
           }
-        </section>
+
+        </div>
       }
 
     }

@@ -71,8 +71,8 @@ export class LoginComponent {
     this.authService.login(this.form.getRawValue()).subscribe({
       next: () => {
         // Guard tarafından buraya yönlendirildiysek, kullanıcıyı asıl gitmek
-        // istediği sayfaya geri götür. Yoksa dashboard'a.
-        const returnUrl = this.route.snapshot.queryParamMap.get('returnUrl') ?? '/dashboard';
+        // istediği sayfaya geri götür. Yoksa doğrudan oyuna.
+        const returnUrl = this.route.snapshot.queryParamMap.get('returnUrl') ?? '/game';
         this.router.navigateByUrl(returnUrl);
       },
       error: (hata: HttpErrorResponse) => {

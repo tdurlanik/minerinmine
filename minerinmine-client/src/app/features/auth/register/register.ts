@@ -107,8 +107,8 @@ export class RegisterComponent {
     this.authService.register({ username, email, password }).subscribe({
       next: () => {
         // Backend kayıt sonrası otomatik giriş yaptırıp token döndürüyor,
-        // bu yüzden kullanıcıyı login'e değil doğrudan dashboard'a alıyoruz.
-        this.router.navigateByUrl('/dashboard');
+        // bu yüzden kullanıcıyı login'e değil doğrudan madene alıyoruz.
+        this.router.navigateByUrl('/game');
       },
       error: (hata: HttpErrorResponse) => {
         this.yukleniyor.set(false);

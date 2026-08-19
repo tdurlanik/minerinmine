@@ -15,6 +15,7 @@ public interface IGameService
     Task<ServiceResult<PurchaseResultDto>> BuyUpgradeAsync(int userId, int upgradeTypeId);
     Task<ServiceResult<UnlockResultDto>> UnlockClickAsync(int userId, int clickTypeId);
     Task<ServiceResult<BuyFacilityResultDto>> BuyFacilityAsync(int userId, int facilityTypeId);
+    Task<PlayerStatsDto> GetStatsAsync(int userId);
 }
 
 /// <summary>
@@ -40,6 +41,13 @@ public class GameService : IGameService
     }
 
     public Task<PlayerStateDto> GetStateAsync(int userId) => _repository.GetPlayerStateAsync(userId);
+
+    /// <summary>
+    /// Oynanis istatistikleri. Burada is mantigi yok: SP'nin dondurdugu rapor
+    /// oldugu gibi geciyor. Yine de servis katmanindan geciriyoruz ki controller
+    /// dogrudan repository'ye bagimli olmasin (katmanlarin tutarliligi).
+    /// </summary>
+    public Task<PlayerStatsDto> GetStatsAsync(int userId) => _repository.GetPlayerStatsAsync(userId);
 
     public async Task<ServiceResult<MineResultDto>> MineAsync(int userId, MineRequest request)
     {

@@ -1,0 +1,13 @@
+<!--
+  aria-live="polite": ekran okuyucu, kullaniciyi bolmeden yeni bildirimi okur.
+  Gorsel olmayan kullanicilar da bildirimden haberdar olur.
+-->
+<div class="yigin" aria-live="polite" aria-atomic="false">
+  @for (t of toast.toasts(); track t.id) {
+    <div class="toast" [class]="'toast--' + t.tur" role="status">
+      <span class="toast__ikon">{{ ikon(t.tur) }}</span>
+      <span class="toast__mesaj">{{ t.mesaj }}</span>
+      <button type="button" class="toast__kapat" aria-label="Kapat" (click)="toast.kapat(t.id)">×</button>
+    </div>
+  }
+</div>

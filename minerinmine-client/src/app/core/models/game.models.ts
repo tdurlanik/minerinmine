@@ -210,3 +210,55 @@ export interface UpgradeFinished {
   remainingSkips: number;
   serverTime: string;
 }
+
+// ============================================================================
+// 4. ADIM: OYNANIS ISTATISTIKLERI (GET /api/game/stats)
+//
+// Bu rakamlarin hicbiri ayrica tutulmuyor; hepsi Transactions olay gunlugunden
+// hesaplaniyor. Gunluk en bastan tutulmasaydi bu ekran mumkun olmazdi.
+// ============================================================================
+
+export interface StatsSummary {
+  username: string;
+  joinedAt: string;
+  totalEarned: number;
+  totalSpent: number;
+  currentKristal: number;
+  clickCount: number;
+  collectCount: number;
+  adCount: number;
+  totalLevels: number;
+  totalMiners: number;
+  facilityCount: number;
+  lastActionAt: string | null;
+}
+
+/** Sebep bazinda kazanc/harcama satiri (Transactions.Reason). */
+export interface StatsBreakdown {
+  reason: string;
+  total: number;
+  times: number;
+}
+
+export interface StatsFacility {
+  facilityTypeId: number;
+  facilityName: string;
+  level: number;
+  resourceName: string;
+  totalMined: number;
+  minerCount: number;
+}
+
+export interface StatsRank {
+  position: number;
+  totalWealth: number;
+  totalPlayers: number;
+}
+
+export interface PlayerStats {
+  summary: StatsSummary;
+  spending: StatsBreakdown[];
+  earning: StatsBreakdown[];
+  facilities: StatsFacility[];
+  rank: StatsRank | null;
+}

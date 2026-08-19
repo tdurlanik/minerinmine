@@ -32,7 +32,7 @@ export const authGuard: CanActivateFn = (route, state) => {
 
 /**
  * Zaten giriş yapmış kullanıcının login/register sayfalarını görmesini engeller.
- * Oturumu açıkken /login'e gitmeye çalışırsa doğrudan dashboard'a alınır.
+ * Oturumu açıkken /login'e gitmeye çalışırsa doğrudan oyuna alınır.
  */
 export const guestGuard: CanActivateFn = () => {
   const authService = inject(AuthService);
@@ -42,7 +42,7 @@ export const guestGuard: CanActivateFn = () => {
     return true;
   }
 
-  router.navigate(['/dashboard']);
+  router.navigate(['/game']);
   return false;
 };
 

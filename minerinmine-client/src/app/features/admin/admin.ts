@@ -3,6 +3,7 @@ import { Component, OnInit, inject, signal } from '@angular/core';
 import { RouterLink } from '@angular/router';
 import { AdminPlayer, SuspiciousEntry } from '../../core/models/meta.models';
 import { AdminService } from '../../core/services/admin.service';
+import { ToastService } from '../../core/services/toast.service';
 
 /**
  * YONETIM PANELI
@@ -22,6 +23,7 @@ import { AdminService } from '../../core/services/admin.service';
 })
 export class AdminComponent implements OnInit {
   private readonly service = inject(AdminService);
+  private readonly toast = inject(ToastService);
 
   readonly oyuncular = signal<AdminPlayer[]>([]);
   readonly toplam = signal(0);
@@ -32,6 +34,9 @@ export class AdminComponent implements OnInit {
   readonly hataMesaji = signal<string | null>(null);
 
   private readonly sayfaBoyu = 20;
+
+  /** Ilk yukleme mi? Ilk hata sayfada kalir, sonrakiler toast olarak gecer. */
+  private ilkYukleme = true;
 
   ngOnInit(): void {
     this.yukle();
@@ -46,14 +51,24 @@ export class AdminComponent implements OnInit {
         this.oyuncular.set(d.players);
         this.toplam.set(d.totalCount);
         this.yukleniyor.set(false);
+        this.ilkYukleme = false;
       },
       error: (hata: HttpErrorResponse) => {
         this.yukleniyor.set(false);
-        this.hataMesaji.set(
+
+        const mesaj =
           hata.status === 403
             ? 'Bu sayfa için Admin yetkisi gerekiyor.'
-            : (hata.error?.message ?? 'Oyuncu listesi alınamadı.')
-        );
+            : (hata.error?.message ?? 'Oyuncu listesi alınamadı.');
+
+        // Ilk yuklemede ekranda gosterilecek baska bir sey olmadigi icin hata
+        // sayfada kalir. Arama/sayfa degistirmede ise liste zaten duruyor;
+        // orada kalici bant yerine gecici bildirim daha dogru.
+        if (this.ilkYukleme) {
+          this.hataMesaji.set(mesaj);
+        } else {
+          this.toast.hata(mesaj);
+        }
       }
     });
   }
@@ -61,7 +76,10 @@ export class AdminComponent implements OnInit {
   supheliYukle(): void {
     this.service.getSuspicious(60, 100000).subscribe({
       next: (d) => this.supheliler.set(d),
-      error: () => this.supheliler.set([])
+      error: () => {
+        this.supheliler.set([]);
+        this.toast.bilgi('Şüpheli kazanç listesi alınamadı.');
+      }
     });
   }
 

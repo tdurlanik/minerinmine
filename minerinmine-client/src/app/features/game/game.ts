@@ -1,5 +1,5 @@
 import { HttpErrorResponse } from '@angular/common/http';
-import { Component, OnInit, effect, inject, signal } from '@angular/core';
+import { Component, OnInit, computed, effect, inject, signal } from '@angular/core';
 import { Router, RouterLink } from '@angular/router';
 import {
   ClickType,
@@ -10,6 +10,7 @@ import {
 } from '../../core/models/game.models';
 import { AuthService } from '../../core/services/auth.service';
 import { GameService } from '../../core/services/game.service';
+import { ToastService } from '../../core/services/toast.service';
 
 /**
  * MADEN EKRANI — oyunun ana dongusu.
@@ -26,14 +27,64 @@ import { GameService } from '../../core/services/game.service';
 export class GameComponent implements OnInit {
   protected readonly game = inject(GameService);
   protected readonly auth = inject(AuthService);
+  protected readonly toast = inject(ToastService);
   private readonly router = inject(Router);
 
   readonly yukleniyor = signal(true);
+
+  /**
+   * SADECE olumcul durum icin: oyun durumu hic yuklenemedi, ekranda cizecek
+   * bir sey yok. Gecici mesajlarin tamami artik ToastService'e gidiyor.
+   */
   readonly hataMesaji = signal<string | null>(null);
-  readonly bilgiMesaji = signal<string | null>(null);
 
   /** Islem devam ederken butonlari kilitlemek icin (cift tiklama korumasi). */
   readonly islemdeki = signal<number | null>(null);
+
+  /**
+   * SEKME DURUMU.
+   *
+   * Deger = gosterilen tesisin facilityTypeId'si, 0 ise Dukkan sekmesi.
+   * (Kimlikler 1'den basladigi icin 0 "tesis degil" anlaminda guvenle kullanilir.)
+   *
+   * NEDEN SEKME? Once butun tesisler ve dort dukkan bolumu alt alta
+   * diziliyordu; iki tesiste bile ekran kaydirmadan hicbir sey gorunmuyordu.
+   * Ayni anda tek bir is birimi gostermek, sayfayi ekrana sigdiriyor.
+   */
+  readonly aktifSekme = signal(0);
+
+  /** Sekmede gosterilecek tesis (Dukkan sekmesindeysek null). */
+  readonly aktifTesis = computed(
+    () => this.game.facilities().find((t) => t.facilityTypeId === this.aktifSekme()) ?? null
+  );
+
+  /** Katlanabilir madenci listesi: tesis kimligi -> acik mi? (varsayilan acik) */
+  readonly madencilerKapali = signal<Record<number, boolean>>({});
+
+  /** Ust seritteki gezinme menusu acik mi? */
+  readonly menuAcik = signal(false);
+
+  /**
+   * Dukkan sekmesinde su an KAC sey satin alinabilir?
+   *
+   * Sekmenin uzerindeki rozette gosteriliyor: oyuncu dukkani acmadan da
+   * parasının yettigi bir sey oldugunu gorsun diye.
+   */
+  readonly dukkanFirsati = computed(() => {
+    const kristal = this.kristal();
+    let sayi = 0;
+
+    for (const t of this.game.purchasable()) {
+      if (t.isUnlocked && kristal >= t.cost) sayi++;
+    }
+    for (const g of this.game.upgrades()) {
+      if (g.nextLevelCost !== null && kristal >= g.nextLevelCost) sayi++;
+    }
+    for (const k of this.game.clickTypes()) {
+      if (!k.isUnlocked && kristal >= k.unlockCost) sayi++;
+    }
+    return sayi;
+  });
 
   /** Satis panelinde secili kaynak ve miktar. */
   readonly satisMiktari = signal<Record<number, number>>({});
@@ -80,11 +131,16 @@ export class GameComponent implements OnInit {
 
         // Sunucu bu istekte kac gelistirme tamamladigini soyluyor.
         if (durum.completedUpgrades > 0) {
-          this.bilgiMesaji.set(
+          this.toast.basari(
             durum.completedUpgrades === 1
               ? 'Geliştirme tamamlandı!'
               : durum.completedUpgrades + ' geliştirme tamamlandı!'
           );
+        }
+
+        // Ilk yuklemede sekme henuz secilmemistir: ilk tesisi ac.
+        if (ilk && durum.facilities.length > 0) {
+          this.aktifSekme.set(durum.facilities[0].facilityTypeId);
         }
 
         // Tamamlanan tesisler icin kaydi temizle ki yeni gelistirmede tekrar calissin.
@@ -96,8 +152,11 @@ export class GameComponent implements OnInit {
       },
       error: (hata: HttpErrorResponse) => {
         this.yukleniyor.set(false);
+        const mesaj = this.hatayiCozumle(hata, 'Oyun durumu alınamadı.');
         if (ilk) {
-          this.hataMesaji.set(this.hatayiCozumle(hata, 'Oyun durumu alınamadı.'));
+          this.hataMesaji.set(mesaj);   // ekranda cizecek hicbir sey yok
+        } else {
+          this.toast.hata(mesaj);
         }
       }
     });
@@ -112,7 +171,6 @@ export class GameComponent implements OnInit {
       .mine({ facilityTypeId: facility.facilityTypeId, clickTypeId: click.clickTypeId })
       .subscribe({
         next: (sonuc) => {
-          this.hataMesaji.set(null);
           this.sonKazanc.set({
             facilityTypeId: facility.facilityTypeId,
             miktar: sonuc.gained,
@@ -120,7 +178,7 @@ export class GameComponent implements OnInit {
           });
         },
         error: (hata: HttpErrorResponse) => {
-          this.hataMesaji.set(this.hatayiCozumle(hata, 'Kazma yapılamadı.'));
+          this.toast.hata(this.hatayiCozumle(hata, 'Kazma yapılamadı.'));
           this.durumuYenile();
         }
       });
@@ -132,21 +190,18 @@ export class GameComponent implements OnInit {
 
   gelistir(facility: Facility): void {
     this.islemdeki.set(facility.facilityTypeId);
-    this.hataMesaji.set(null);
-    this.bilgiMesaji.set(null);
-
     this.game.startUpgrade(facility.facilityTypeId).subscribe({
       next: (sonuc) => {
         this.islemdeki.set(null);
-        this.bilgiMesaji.set(
-          facility.name + ' seviye ' + sonuc.targetLevel + ' calismasi basladi (' +
+        this.toast.bilgi(
+          facility.name + ' seviye ' + sonuc.targetLevel + ' çalışması başladı (' +
           sonuc.durationMinutes + ' dk).'
         );
         this.durumuYenile();
       },
       error: (hata: HttpErrorResponse) => {
         this.islemdeki.set(null);
-        this.hataMesaji.set(this.hatayiCozumle(hata, 'Geliştirme başlatılamadı.'));
+        this.toast.hata(this.hatayiCozumle(hata, 'Geliştirme başlatılamadı.'));
         this.durumuYenile();
       }
     });
@@ -154,14 +209,11 @@ export class GameComponent implements OnInit {
 
   hemenBitir(facility: Facility): void {
     this.islemdeki.set(facility.facilityTypeId);
-    this.hataMesaji.set(null);
-    this.bilgiMesaji.set(null);
-
     this.game.finishUpgradeNow(facility.facilityTypeId).subscribe({
       next: (sonuc) => {
         this.islemdeki.set(null);
         const dakika = Math.max(1, Math.round(sonuc.skippedSeconds / 60));
-        this.bilgiMesaji.set(
+        this.toast.basari(
           facility.name + ' seviye ' + sonuc.newLevel + ' oldu. ' +
           dakika + ' dakika beklemekten kurtuldun. ' +
           'Bugün kalan hızlandırma hakkın: ' + sonuc.remainingSkips
@@ -170,7 +222,7 @@ export class GameComponent implements OnInit {
       },
       error: (hata: HttpErrorResponse) => {
         this.islemdeki.set(null);
-        this.hataMesaji.set(this.hatayiCozumle(hata, 'İşlem tamamlanamadı.'));
+        this.toast.hata(this.hatayiCozumle(hata, 'İşlem tamamlanamadı.'));
         this.durumuYenile();
       }
     });
@@ -219,6 +271,34 @@ export class GameComponent implements OnInit {
     return this.kristal() >= facility.nextLevelCost;
   }
 
+  sekmeSec(deger: number): void {
+    this.aktifSekme.set(deger);
+  }
+
+  menuyuAcKapat(): void {
+    this.menuAcik.update((a) => !a);
+  }
+
+  menuyuKapat(): void {
+    this.menuAcik.set(false);
+  }
+
+  madencileriKatla(facilityTypeId: number): void {
+    this.madencilerKapali.update((m) => ({ ...m, [facilityTypeId]: !m[facilityTypeId] }));
+  }
+
+  madencilerAcikMi(facilityTypeId: number): boolean {
+    return !this.madencilerKapali()[facilityTypeId];
+  }
+
+  /** Bu tesiste su an ise alinabilecek madenci var mi? (katliyken bile bilinsin) */
+  madenciFirsati(facilityTypeId: number): number {
+    const kristal = this.kristal();
+    return this.game
+      .minersOf(facilityTypeId)
+      .filter((m) => m.isAvailable && m.count < m.maxCount && kristal >= m.hireCost).length;
+  }
+
   kristal(): number {
     return this.game.resources().find((r) => r.code === 'KRISTAL')?.amount ?? 0;
   }
@@ -248,39 +328,34 @@ export class GameComponent implements OnInit {
   // ==========================================================================
 
   topla(): void {
-    this.hataMesaji.set(null);
-
     this.game.collect().subscribe({
       next: (kaynaklar) => {
         if (kaynaklar.length === 0) {
-          this.bilgiMesaji.set('Toplanacak bir şey yok. Madenci alarak üretimi otomatikleştirebilirsin.');
+          this.toast.bilgi('Toplanacak bir şey yok. Madenci alarak üretimi otomatikleştirebilirsin.');
         } else {
-          this.bilgiMesaji.set(
+          this.toast.basari(
             'Toplandı: ' + kaynaklar.map((k) => '+' + this.bicimle(k.amount) + ' ' + k.name).join(', ')
           );
         }
         this.durumuYenile();
       },
       error: (hata: HttpErrorResponse) => {
-        this.hataMesaji.set(this.hatayiCozumle(hata, 'Toplama başarısız.'));
+        this.toast.hata(this.hatayiCozumle(hata, 'Toplama başarısız.'));
       }
     });
   }
 
   madenciAl(madenci: Miner): void {
     this.islemdeki.set(madenci.minerTypeId);
-    this.hataMesaji.set(null);
-    this.bilgiMesaji.set(null);
-
     this.game.hireMiner(madenci.facilityTypeId, madenci.minerTypeId).subscribe({
       next: (sonuc) => {
         this.islemdeki.set(null);
-        this.bilgiMesaji.set(madenci.name + ' işe alındı. Toplam: ' + sonuc.newCount);
+        this.toast.basari(madenci.name + ' işe alındı. Toplam: ' + sonuc.newCount);
         this.durumuYenile();
       },
       error: (hata: HttpErrorResponse) => {
         this.islemdeki.set(null);
-        this.hataMesaji.set(this.hatayiCozumle(hata, 'Madenci işe alınamadı.'));
+        this.toast.hata(this.hatayiCozumle(hata, 'Madenci işe alınamadı.'));
         this.durumuYenile();
       }
     });
@@ -288,18 +363,15 @@ export class GameComponent implements OnInit {
 
   kazmaAc(kazma: ClickType): void {
     this.islemdeki.set(kazma.clickTypeId);
-    this.hataMesaji.set(null);
-    this.bilgiMesaji.set(null);
-
     this.game.unlockClick(kazma.clickTypeId).subscribe({
       next: () => {
         this.islemdeki.set(null);
-        this.bilgiMesaji.set(kazma.name + ' açıldı! Artık madencisini de işe alabilirsin.');
+        this.toast.basari(kazma.name + ' açıldı! Artık madencisini de işe alabilirsin.');
         this.durumuYenile();
       },
       error: (hata: HttpErrorResponse) => {
         this.islemdeki.set(null);
-        this.hataMesaji.set(this.hatayiCozumle(hata, 'Kazma türü açılamadı.'));
+        this.toast.hata(this.hatayiCozumle(hata, 'Kazma türü açılamadı.'));
         this.durumuYenile();
       }
     });
@@ -307,18 +379,15 @@ export class GameComponent implements OnInit {
 
   guclendirmeAl(guclendirme: Upgrade): void {
     this.islemdeki.set(guclendirme.upgradeTypeId);
-    this.hataMesaji.set(null);
-    this.bilgiMesaji.set(null);
-
     this.game.buyUpgrade(guclendirme.upgradeTypeId).subscribe({
       next: (sonuc) => {
         this.islemdeki.set(null);
-        this.bilgiMesaji.set(guclendirme.name + ' seviye ' + sonuc.newLevel + ' oldu.');
+        this.toast.basari(guclendirme.name + ' seviye ' + sonuc.newLevel + ' oldu.');
         this.durumuYenile();
       },
       error: (hata: HttpErrorResponse) => {
         this.islemdeki.set(null);
-        this.hataMesaji.set(this.hatayiCozumle(hata, 'Güçlendirme alınamadı.'));
+        this.toast.hata(this.hatayiCozumle(hata, 'Güçlendirme alınamadı.'));
         this.durumuYenile();
       }
     });
@@ -331,13 +400,10 @@ export class GameComponent implements OnInit {
     }
 
     this.islemdeki.set(resourceTypeId);
-    this.hataMesaji.set(null);
-    this.bilgiMesaji.set(null);
-
     this.game.sell({ resourceTypeId, amount: miktar }).subscribe({
       next: (sonuc) => {
         this.islemdeki.set(null);
-        this.bilgiMesaji.set(
+        this.toast.basari(
           this.bicimle(sonuc.soldAmount) + ' satıldı, +' + this.bicimle(sonuc.earned) + ' Kristal.'
         );
         this.satisMiktari.set({});
@@ -345,7 +411,7 @@ export class GameComponent implements OnInit {
       },
       error: (hata: HttpErrorResponse) => {
         this.islemdeki.set(null);
-        this.hataMesaji.set(this.hatayiCozumle(hata, 'Satış yapılamadı.'));
+        this.toast.hata(this.hatayiCozumle(hata, 'Satış yapılamadı.'));
         this.durumuYenile();
       }
     });
@@ -364,22 +430,19 @@ export class GameComponent implements OnInit {
    */
   reklamIzle(): void {
     this.islemdeki.set(-1);
-    this.hataMesaji.set(null);
-    this.bilgiMesaji.set(null);
-
     this.game.watchAd().subscribe({
       next: (sonuc) => {
         this.islemdeki.set(null);
-        this.bilgiMesaji.set(
-          sonuc.alreadyProcessed
-            ? 'Bu ödül zaten verilmiş.'
-            : '+' + this.bicimle(sonuc.amount) + ' Kristal kazandın!'
-        );
+        if (sonuc.alreadyProcessed) {
+          this.toast.bilgi('Bu ödül zaten verilmiş.');
+        } else {
+          this.toast.basari('+' + this.bicimle(sonuc.amount) + ' Kristal kazandın!');
+        }
         this.durumuYenile();
       },
       error: (hata: HttpErrorResponse) => {
         this.islemdeki.set(null);
-        this.hataMesaji.set(this.hatayiCozumle(hata, 'Ödül alınamadı.'));
+        this.toast.hata(this.hatayiCozumle(hata, 'Ödül alınamadı.'));
       }
     });
   }
@@ -393,20 +456,18 @@ export class GameComponent implements OnInit {
   tesisAl(tesis: PurchasableFacility): void {
     // Negatif deger kullaniyoruz ki madenci/guclendirme kimlikleriyle cakismasin.
     this.islemdeki.set(-tesis.facilityTypeId);
-    this.hataMesaji.set(null);
-    this.bilgiMesaji.set(null);
-
     this.game.buyFacility(tesis.facilityTypeId).subscribe({
       next: (sonuc) => {
         this.islemdeki.set(null);
-        this.bilgiMesaji.set(
+        this.toast.basari(
           sonuc.facilityName + ' açıldı! Artık ' + tesis.resourceName + ' de çıkarabilirsin.'
         );
+        this.aktifSekme.set(tesis.facilityTypeId);   // yeni tesisi hemen goster
         this.durumuYenile();
       },
       error: (hata: HttpErrorResponse) => {
         this.islemdeki.set(null);
-        this.hataMesaji.set(this.hatayiCozumle(hata, 'Tesis satın alınamadı.'));
+        this.toast.hata(this.hatayiCozumle(hata, 'Tesis satın alınamadı.'));
         this.durumuYenile();
       }
     });

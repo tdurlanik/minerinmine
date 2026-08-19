@@ -2,21 +2,19 @@
 
   <header class="pano__ust">
     <div class="pano__marka">
-      <span class="pano__ikon">⛏️</span>
+      <span class="pano__ikon">📊</span>
       <div>
         <h1 class="pano__baslik">MinerInMine</h1>
-        <p class="pano__altbaslik">Maden Merkezi</p>
+        <p class="pano__altbaslik">Oynanış İstatistikleri</p>
       </div>
     </div>
 
     <div class="pano__kullanici">
-      <span class="pano__ad">{{ authService.username() }}</span>
-      <!-- @for kullanırken 'track' ZORUNLUDUR: Angular listedeki her öğeyi
-           neye göre takip edeceğini bilmek ister, böylece liste değiştiğinde
-           tüm DOM'u baştan çizmek yerine sadece değişeni günceller. -->
-      @for (rol of authService.roles(); track rol) {
+      <span class="pano__ad">{{ auth.username() }}</span>
+      @for (rol of auth.roles(); track rol) {
         <span class="mim-rozet" [class.mim-rozet--admin]="rol === 'Admin'">{{ rol }}</span>
       }
+      <a class="mim-buton mim-buton--sade pano__cikis" routerLink="/game">⛏️ Madene Dön</a>
       <button type="button" class="mim-buton mim-buton--sade pano__cikis" (click)="cikisYap()">
         Çıkış
       </button>
@@ -26,90 +24,136 @@
   <main class="pano__govde">
 
     @if (yukleniyor()) {
-      <div class="kutu">
-        <p class="kutu__bos">Maden kayıtları okunuyor...</p>
-      </div>
+      <div class="kutu"><p class="kutu__bos">Maden kayıtları okunuyor...</p></div>
     } @else if (hataMesaji()) {
-      <div class="mim-uyari">
-        <span>⚠️</span>
-        <span>{{ hataMesaji() }}</span>
-      </div>
-    } @else if (sunucuKullanici(); as kullanici) {
+      <div class="mim-uyari"><span>⚠️</span><span>{{ hataMesaji() }}</span></div>
+    } @else if (veri(); as d) {
 
-      <section class="kutu kutu--karsilama">
-        <h2 class="kutu__baslik">Hoş geldin, {{ kullanici.username }} 👋</h2>
-        <p class="kutu__aciklama">
-          Kimliğin doğrulandı. Kazman hazır, cevher damarları seni bekliyor.
-        </p>
-        <a class="mim-buton kutu__buton" routerLink="/game">⛏️ Madene Gir</a>
+      <!-- ============ ÖZET KARTLARI ============ -->
+      <section class="ozet">
+        <div class="ozet__kart ozet__kart--altin">
+          <span class="ozet__etiket">Toplam Kazanç</span>
+          <span class="ozet__deger">{{ bicimle(d.summary.totalEarned) }}</span>
+          <span class="ozet__alt">Kristal</span>
+        </div>
+        <div class="ozet__kart">
+          <span class="ozet__etiket">Toplam Harcama</span>
+          <span class="ozet__deger">{{ bicimle(d.summary.totalSpent) }}</span>
+          <span class="ozet__alt">Kristal</span>
+        </div>
+        <div class="ozet__kart">
+          <span class="ozet__etiket">Kasadaki</span>
+          <span class="ozet__deger">{{ bicimle(d.summary.currentKristal) }}</span>
+          <span class="ozet__alt">Kristal</span>
+        </div>
+        @if (enCokUreten(); as t) {
+          <div class="ozet__kart ozet__kart--bakir">
+            <span class="ozet__etiket">En Çok Üreten</span>
+            <span class="ozet__deger ozet__deger--ad">{{ t.facilityName }}</span>
+            <span class="ozet__alt">{{ bicimle(t.totalMined) }} {{ t.resourceName }}</span>
+          </div>
+        }
+
+        @if (d.rank; as s) {
+          <div class="ozet__kart ozet__kart--zumrut">
+            <span class="ozet__etiket">Sıralama</span>
+            <span class="ozet__deger">#{{ s.position }}</span>
+            <span class="ozet__alt">{{ s.totalPlayers }} oyuncu içinde</span>
+          </div>
+        }
       </section>
 
-      <!-- KANIT PANELİ: Bu veriler localStorage'dan değil, korumalı
-           /api/users/me ucundan geldi. Yani token gerçekten çalışıyor. -->
+      <!-- ============ OYNANIŞ ÖZETİ ============ -->
       <section class="kutu">
-        <h3 class="kutu__baslik">🔐 Sunucudan Doğrulanan Kimlik</h3>
-        <p class="kutu__aciklama">
-          Aşağıdaki bilgiler tarayıcının hafızasından değil,
-          <code>[Authorize]</code> ile korunan <code>GET /api/users/me</code> ucundan geldi.
-        </p>
-
+        <h3 class="kutu__baslik">⛏️ Oynanış Özeti</h3>
         <dl class="veri">
-          <div class="veri__satir">
-            <dt>Kullanıcı Id</dt>
-            <dd>{{ kullanici.userId }}</dd>
-          </div>
-          <div class="veri__satir">
-            <dt>Kullanıcı Adı</dt>
-            <dd>{{ kullanici.username }}</dd>
-          </div>
-          <div class="veri__satir">
-            <dt>E-posta</dt>
-            <dd>{{ kullanici.email }}</dd>
-          </div>
-          <div class="veri__satir">
-            <dt>Roller</dt>
-            <dd>{{ kullanici.roles.join(', ') }}</dd>
-          </div>
+          <div class="veri__satir"><dt>Elle kazma</dt><dd>{{ d.summary.clickCount }} kez</dd></div>
+          <div class="veri__satir"><dt>Üretim toplama</dt><dd>{{ d.summary.collectCount }} kez</dd></div>
+          <div class="veri__satir"><dt>İzlenen reklam</dt><dd>{{ d.summary.adCount }} kez</dd></div>
+          <div class="veri__satir"><dt>Tesis sayısı</dt><dd>{{ d.summary.facilityCount }}</dd></div>
+          <div class="veri__satir"><dt>Toplam seviye</dt><dd>{{ d.summary.totalLevels }}</dd></div>
+          <div class="veri__satir"><dt>Çalışan madenci</dt><dd>{{ d.summary.totalMiners }}</dd></div>
+          <div class="veri__satir"><dt>Katılım</dt><dd>{{ tarih(d.summary.joinedAt) }} · {{ kidem(d.summary.joinedAt) }}</dd></div>
+          <div class="veri__satir"><dt>Son işlem</dt><dd>{{ tarih(d.summary.lastActionAt) }}</dd></div>
         </dl>
       </section>
 
-      <!-- ROL BAZLI YETKİ DENEYİ -->
+      <!-- ============ HARCAMA DAĞILIMI ============ -->
       <section class="kutu">
-        <h3 class="kutu__baslik">🛡️ Rol Bazlı Yetki Testi</h3>
-        <p class="kutu__aciklama">
-          <code>/api/users/admin-only</code> ucu <code>[Authorize(Roles = "Admin")]</code> ile korunuyor.
-          Player rolündeysen <strong>403 Forbidden</strong> almalısın — bu bir hata değil,
-          yetkilendirmenin çalıştığının kanıtıdır.
-        </p>
-
-        <button type="button" class="mim-buton kutu__buton" (click)="adminUcunuDene()">
-          Admin Ucunu Dene
-        </button>
-
-        @if (adminSonuc()) {
-          <div class="mim-uyari mim-uyari--bilgi kutu__sonuc">
-            <span>✅</span>
-            <span>{{ adminSonuc() }}</span>
-          </div>
-        }
-
-        @if (adminHata()) {
-          <div class="mim-uyari kutu__sonuc">
-            <span>🚫</span>
-            <span>{{ adminHata() }}</span>
-          </div>
+        <h3 class="kutu__baslik">💸 Kristal Nereye Gitti?</h3>
+        @if (d.spending.length === 0) {
+          <p class="kutu__bos">Henüz hiç Kristal harcamadın.</p>
+        } @else {
+          <!-- Çubuk uzunlukları en büyük kaleme oranla hesaplanıyor. -->
+          @for (h of d.spending; track h.reason) {
+            <div class="dagilim">
+              <div class="dagilim__ust">
+                <span class="dagilim__ad">{{ sebepIkonu(h.reason) }} {{ sebepAdi(h.reason) }}</span>
+                <span class="dagilim__deger">{{ bicimle(h.total) }} · {{ h.times }} işlem</span>
+              </div>
+              <div class="cubuk">
+                <span class="cubuk__dolum cubuk__dolum--harcama" [style.width.%]="harcamaOrani(h)"></span>
+              </div>
+            </div>
+          }
         }
       </section>
 
-      <section class="kutu kutu--yakinda">
-        <h3 class="kutu__baslik">⚒️ Sırada Ne Var?</h3>
-        <ul class="liste">
-          <li>Tesis geliştirme ve inşaat süreleri</li>
-          <li>Madenci otomasyonu ve offline kazanç</li>
-          <li>Maden satışı ve kalıcı güçlendirmeler</li>
-          <li>Oyuncu sıralaması (leaderboard)</li>
-        </ul>
+      <!-- ============ KAZANÇ DAĞILIMI ============ -->
+      <section class="kutu">
+        <h3 class="kutu__baslik">💎 Kristal Nereden Geldi?</h3>
+        @if (d.earning.length === 0) {
+          <p class="kutu__bos">Henüz Kristal kazancın yok. Maden satarak başlayabilirsin.</p>
+        } @else {
+          @for (k of d.earning; track k.reason) {
+            <div class="dagilim">
+              <div class="dagilim__ust">
+                <span class="dagilim__ad">{{ sebepIkonu(k.reason) }} {{ sebepAdi(k.reason) }}</span>
+                <span class="dagilim__deger">{{ bicimle(k.total) }} · {{ k.times }} işlem</span>
+              </div>
+              <div class="cubuk">
+                <span class="cubuk__dolum" [style.width.%]="kazancOrani(k)"></span>
+              </div>
+            </div>
+          }
+        }
       </section>
+
+      <!-- ============ TESİS ÜRETİMİ ============ -->
+      <section class="kutu">
+        <h3 class="kutu__baslik">🏭 Tesis Üretimi</h3>
+        <table class="tablo">
+          <thead>
+            <tr>
+              <th>Tesis</th><th>Sv</th><th>Maden</th>
+              <th class="tablo__sag">Toplam çıkarılan</th><th class="tablo__sag">Madenci</th>
+            </tr>
+          </thead>
+          <tbody>
+            @for (t of d.facilities; track t.facilityTypeId) {
+              <!-- En çok üreten tesis satırı işaretlenir -->
+              <tr [class.tablo__lider]="t.facilityTypeId === enCokUreten()?.facilityTypeId">
+                <td>
+                  {{ t.facilityName }}
+                  @if (t.facilityTypeId === enCokUreten()?.facilityTypeId) {
+                    <span class="tablo__tac" title="En çok üreten tesis">👑</span>
+                  }
+                </td>
+                <td>{{ t.level }}</td>
+                <td>{{ t.resourceName }}</td>
+                <td class="tablo__sag">{{ bicimle(t.totalMined) }}</td>
+                <td class="tablo__sag">{{ t.minerCount }}</td>
+              </tr>
+            }
+          </tbody>
+        </table>
+      </section>
+
+      <p class="kaynak-notu">
+        Bu sayfadaki hiçbir sayı ayrıca tutulmuyor; hepsi <code>Transactions</code>
+        olay günlüğünden hesaplanıyor. Günlük en baştan tutulmasaydı bu ekran
+        yalnızca "bugünden itibaren" çalışabilirdi.
+      </p>
 
     }
 

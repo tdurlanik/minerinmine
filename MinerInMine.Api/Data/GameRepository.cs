@@ -29,6 +29,7 @@ public interface IGameRepository
     Task<PurchaseDbResult> BuyUpgradeAsync(int userId, int upgradeTypeId);
     Task<UnlockDbResult> UnlockClickAsync(int userId, int clickTypeId);
     Task<BuyFacilityDbResult> BuyFacilityAsync(int userId, int facilityTypeId);
+    Task<PlayerStatsDto> GetPlayerStatsAsync(int userId);
 }
 
 /// <summary>
@@ -261,5 +262,31 @@ public class GameRepository : IGameRepository
 
         return new BuyFacilityDbResult(
             p.Get<int>("@ReturnValue"), p.Get<string?>("@ErrorMessage"), data);
+    }
+
+    /// <summary>
+    /// Oynanis istatistikleri. sp_GetPlayerStats BES sonuc kumesi doner ve
+    /// buradaki okuma sirasi SP icindeki SELECT sirasiyla ayni olmak zorundadir.
+    ///
+    /// ReadSingleOrDefault: satir gelmeyebilecek kumeler icin (yeni oyuncunun
+    /// henuz hicbir islemi olmayabilir) guvenli okuma.
+    /// </summary>
+    public async Task<PlayerStatsDto> GetPlayerStatsAsync(int userId)
+    {
+        using var connection = _factory.CreateConnection();
+
+        using var multi = await connection.QueryMultipleAsync(
+            "sp_GetPlayerStats",
+            new { UserId = userId },
+            commandType: CommandType.StoredProcedure);
+
+        return new PlayerStatsDto
+        {
+            Summary = await multi.ReadSingleOrDefaultAsync<StatsSummaryDto>() ?? new StatsSummaryDto(),
+            Spending = (await multi.ReadAsync<StatsBreakdownDto>()).ToList(),
+            Earning = (await multi.ReadAsync<StatsBreakdownDto>()).ToList(),
+            Facilities = (await multi.ReadAsync<StatsFacilityDto>()).ToList(),
+            Rank = await multi.ReadSingleOrDefaultAsync<StatsRankDto>()
+        };
     }
 }

@@ -1,4 +1,4 @@
-/* Maden Merkezi (Dashboard) stilleri.
+/* İstatistik ekranı (/dashboard) stilleri.
    Renk değişkenleri global styles.css içinde :root üzerinde tanımlıdır. */
 
 .pano {
@@ -68,6 +68,11 @@
   width: auto;
   padding: 7px 16px;
   font-size: 13px;
+
+  /* Bu sinif hem <button> hem <a> uzerinde kullaniliyor. */
+  display: inline-flex;
+  align-items: center;
+  text-decoration: none;
 }
 
 /* --- Gövde --- */
@@ -93,11 +98,6 @@
   padding: 22px;
 }
 
-.kutu--karsilama {
-  /* Sol kenarda altın bir cevher damarı */
-  border-left: 3px solid var(--altin);
-}
-
 .kutu__baslik {
   margin: 0 0 8px;
   font-size: 17px;
@@ -117,23 +117,6 @@
   text-align: center;
   color: var(--metin-silik);
   font-size: 14px;
-}
-
-.kutu__buton {
-  width: auto;
-  margin-top: 14px;
-  padding: 9px 20px;
-  font-size: 14px;
-
-  /* Bu sinif hem <button> hem <a> uzerinde kullaniliyor.
-     Bagalanti olarak kullanildiginda buton gibi gorunsun diye: */
-  display: inline-flex;
-  align-items: center;
-  text-decoration: none;
-}
-
-.kutu__sonuc {
-  margin: 14px 0 0;
 }
 
 code {
@@ -181,19 +164,6 @@ code {
   word-break: break-all;
 }
 
-/* --- Yakında listesi --- */
-.kutu--yakinda {
-  opacity: 0.8;
-}
-
-.liste {
-  margin: 12px 0 0;
-  padding-left: 20px;
-  font-size: 13.5px;
-  line-height: 1.9;
-  color: var(--metin-soluk);
-}
-
 /* --- Küçük ekran uyumu --- */
 @media (max-width: 520px) {
   .pano__ust {
@@ -208,4 +178,169 @@ code {
   .veri__satir dd {
     text-align: left;
   }
+}
+
+/* ==========================================================================
+   4. ADIM: İSTATİSTİK GÖRSELLERİ
+   ========================================================================== */
+
+/* --- Özet kartları --- */
+.ozet {
+  display: grid;
+
+  /* auto-fit + minmax: kaç kart sığıyorsa o kadar sütun olur.
+     Ayrı ayrı medya sorgusu yazmaya gerek kalmaz. */
+  grid-template-columns: repeat(auto-fit, minmax(150px, 1fr));
+  gap: 12px;
+}
+
+.ozet__kart {
+  display: flex;
+  flex-direction: column;
+  gap: 2px;
+  padding: 16px 18px;
+  background: linear-gradient(180deg, var(--kaya-acik), var(--kaya));
+  border: 1px solid var(--kaya-kenar);
+  border-left: 3px solid var(--kaya-kenar);
+  border-radius: var(--radius);
+}
+
+.ozet__kart--altin {
+  border-left-color: var(--altin);
+}
+
+.ozet__kart--zumrut {
+  border-left-color: var(--zumrut);
+}
+
+.ozet__etiket {
+  font-size: 11px;
+  text-transform: uppercase;
+  letter-spacing: 0.6px;
+  color: var(--metin-silik);
+}
+
+.ozet__deger {
+  font-size: 24px;
+  font-weight: 700;
+  color: var(--metin);
+  font-variant-numeric: tabular-nums;
+}
+
+.ozet__kart--altin .ozet__deger {
+  color: var(--altin-parlak);
+}
+
+.ozet__kart--zumrut .ozet__deger {
+  color: var(--zumrut);
+}
+
+.ozet__alt {
+  font-size: 12px;
+  color: var(--metin-silik);
+}
+
+/* --- Dağılım çubukları --- */
+.dagilim {
+  margin-top: 14px;
+}
+
+.dagilim__ust {
+  display: flex;
+  justify-content: space-between;
+  gap: 12px;
+  margin-bottom: 5px;
+  font-size: 13px;
+}
+
+.dagilim__ad {
+  color: var(--metin);
+}
+
+.dagilim__deger {
+  color: var(--metin-silik);
+  font-variant-numeric: tabular-nums;
+  white-space: nowrap;
+}
+
+.cubuk {
+  height: 8px;
+  background: var(--kaya-derin);
+  border: 1px solid var(--kaya-kenar);
+  border-radius: 999px;
+  overflow: hidden;
+}
+
+.cubuk__dolum {
+  display: block;
+  height: 100%;
+  background: linear-gradient(90deg, var(--altin-koyu), var(--altin-parlak));
+  transition: width var(--gecis);
+}
+
+.cubuk__dolum--harcama {
+  background: linear-gradient(90deg, #8a4a2c, var(--bakir));
+}
+
+/* --- Tesis tablosu --- */
+.tablo {
+  width: 100%;
+  margin-top: 14px;
+  border-collapse: collapse;
+  font-size: 13.5px;
+}
+
+.tablo th {
+  padding: 8px 10px;
+  text-align: left;
+  font-size: 11px;
+  text-transform: uppercase;
+  letter-spacing: 0.5px;
+  color: var(--metin-silik);
+  border-bottom: 1px solid var(--kaya-kenar);
+}
+
+.tablo td {
+  padding: 10px;
+  border-bottom: 1px solid var(--kaya-kenar);
+}
+
+.tablo tbody tr:last-child td {
+  border-bottom: none;
+}
+
+.tablo__sag {
+  text-align: right;
+  font-variant-numeric: tabular-nums;
+}
+
+.kaynak-notu {
+  margin: 0;
+  font-size: 12.5px;
+  line-height: 1.7;
+  color: var(--metin-silik);
+  text-align: center;
+}
+
+.ozet__kart--bakir {
+  border-left-color: var(--bakir);
+}
+
+.ozet__kart--bakir .ozet__deger {
+  color: var(--bakir);
+}
+
+/* Tesis adı sayı değil; büyük punto taşmasın diye bir tık küçük. */
+.ozet__deger--ad {
+  font-size: 19px;
+}
+
+/* En çok üreten tesisin satırı */
+.tablo__lider td {
+  background: rgba(245, 179, 1, 0.06);
+}
+
+.tablo__tac {
+  margin-left: 5px;
+  font-size: 12px;
 }

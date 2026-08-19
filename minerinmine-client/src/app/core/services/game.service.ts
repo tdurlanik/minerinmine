@@ -10,6 +10,7 @@ import {
   MineRequest,
   MineResult,
   PlayerState,
+  PlayerStats,
   PurchaseResult,
   SellRequest,
   SellResult,
@@ -349,5 +350,15 @@ export class GameService {
     return this.http
       .post<UnlockResult>(`${this.apiUrl}/click/${clickTypeId}/unlock`, {})
       .pipe(tap((r) => this.syncClock(r.serverTime)));
+  }
+
+  /**
+   * Oynanis istatistikleri (istatistik ekrani).
+   *
+   * Bu istegin sonucu _state sinyaline YAZILMAZ: rapor niteliginde, tek
+   * seferlik bir veri. Oyun ekraninin akan durumuyla karistirmiyoruz.
+   */
+  getStats(): Observable<PlayerStats> {
+    return this.http.get<PlayerStats>(`${this.apiUrl}/stats`);
   }
 }

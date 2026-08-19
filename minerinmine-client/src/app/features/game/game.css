@@ -48,18 +48,81 @@
   color: var(--metin-silik);
 }
 
-.ust__butonlar {
-  display: flex;
-  gap: 8px;
+/* --- Gezinme menusu (ust seritteki butonlarin yerini aldi) --- */
+.menu {
+  position: relative;
 }
 
-.ust__buton {
-  width: auto;
-  padding: 7px 14px;
+.menu__acici {
+  padding: 8px 14px;
   font-size: 13px;
+  font-family: inherit;
+  color: var(--metin-soluk);
+  background: transparent;
+  border: 1px solid var(--kaya-kenar);
+  border-radius: var(--radius-sm);
+  cursor: pointer;
+  transition: border-color var(--gecis), color var(--gecis);
+}
+
+.menu__acici:hover,
+.menu__acici--acik {
+  border-color: var(--altin);
+  color: var(--altin-parlak);
+}
+
+/*
+  GORUNMEZ ORTU: menunun ALTINDA (z-index) ama sayfanin USTUNDE duruyor.
+  Kullanici menunun disina tikladiginda once bu katman tiklamayi yakalar ve
+  menuyu kapatir. Belge (document) seviyesinde olay dinlemekten daha basit ve
+  bilesen yok olurken temizlik gerektirmez.
+*/
+.menu__ortu {
+  position: fixed;
+  inset: 0;
+  z-index: 20;
+}
+
+.menu__liste {
+  position: absolute;
+  top: calc(100% + 8px);
+  right: 0;
+  z-index: 21;
+
+  display: flex;
+  flex-direction: column;
+  min-width: 190px;
+  padding: 6px;
+  background: var(--kaya-acik);
+  border: 1px solid var(--kaya-kenar);
+  border-radius: var(--radius-sm);
+  box-shadow: 0 16px 40px rgba(0, 0, 0, 0.5);
+}
+
+.menu__oge {
+  padding: 9px 11px;
+  font-size: 13.5px;
+  font-family: inherit;
+  text-align: left;
   text-decoration: none;
-  display: inline-flex;
-  align-items: center;
+  color: var(--metin-soluk);
+  background: none;
+  border: none;
+  border-radius: 7px;
+  cursor: pointer;
+  transition: background var(--gecis), color var(--gecis);
+}
+
+.menu__oge:hover {
+  background: var(--kaya-derin);
+  color: var(--metin);
+}
+
+.menu__oge--cikis {
+  margin-top: 4px;
+  border-top: 1px solid var(--kaya-kenar);
+  border-radius: 0 0 7px 7px;
+  color: var(--yakut);
 }
 
 /* --- Kaynak sayaclari --- */
@@ -385,28 +448,14 @@
    GUN 4: OTOMASYON VE EKONOMI
    ========================================================================== */
 
-/* Ust seritteki otomatik uretim gostergesi */
+/* Otomatik uretim gostergesi: kaynak sayaclariyla ayni kutu, farkli renk. */
 .oto {
-  display: flex;
-  flex-direction: column;
-  align-items: center;
-  padding: 6px 14px;
-  border-radius: var(--radius-sm);
   background: rgba(61, 220, 151, 0.1);
-  border: 1px solid rgba(61, 220, 151, 0.3);
+  border-color: rgba(61, 220, 151, 0.3);
 }
 
-.oto__ad {
-  font-size: 10px;
-  letter-spacing: 0.6px;
-  color: var(--metin-silik);
-}
-
-.oto__deger {
-  font-size: 15px;
-  font-weight: 700;
+.oto .kaynak__deger {
   color: var(--zumrut);
-  font-variant-numeric: tabular-nums;
 }
 
 /* --- Birikmis uretim karti --- */
@@ -440,6 +489,12 @@
 
 .uretim__bilgi strong {
   color: var(--zumrut);
+}
+
+.uretim__butonlar {
+  display: flex;
+  gap: 8px;
+  flex-wrap: wrap;
 }
 
 .uretim__buton {
@@ -618,10 +673,10 @@
 
 /* Reklam odulu butonu */
 .reklam {
-  width: 100%;
-  margin-top: 12px;
-  padding: 9px;
+  width: auto;
+  padding: 10px 16px;
   font-size: 13.5px;
+  white-space: nowrap;
 }
 
 /* Kilitli tesis satiri */
@@ -631,4 +686,172 @@
 
 .urun__bilgi--kilit {
   color: var(--bakir);
+}
+
+/* ==========================================================================
+   4. ADIM: SEKMELİ DÜZEN
+
+   Önce bütün tesisler ve dört dükkân bölümü alt alta diziliyordu; iki tesiste
+   bile ekran kaydırmadan hiçbir şey görünmüyordu. Artık aynı anda tek bir iş
+   birimi (bir tesis ya da dükkân) gösteriliyor.
+   ========================================================================== */
+
+.sekmeler {
+  display: flex;
+  align-items: stretch;
+  gap: 8px;
+
+  /*
+    KAYDIRMA YOK, SATIR KIRMA VAR.
+    Önce yatay kaydırma (overflow-x: auto) kullanıyorduk; dar ekranda Dükkân
+    sekmesine ulaşmak için şeridi kaydırmak gerekiyordu. flex-wrap ile sığmayan
+    sekme alt satıra iniyor ve hepsi tek bakışta görünür kalıyor.
+
+    Ek fayda: overflow-x kırpma yaptığı için sekmenin dışına taşan rozetin üst
+    kısmı kesiliyordu; sarma düzeninde bu sorun da yok.
+  */
+  flex-wrap: wrap;
+}
+
+.sekme {
+  position: relative;
+  display: flex;
+  flex-direction: column;
+  align-items: flex-start;
+  gap: 2px;
+  flex-shrink: 0;
+
+  padding: 9px 16px;
+  font-family: inherit;
+  color: var(--metin-soluk);
+  background: var(--kaya);
+  border: 1px solid var(--kaya-kenar);
+  border-radius: var(--radius-sm);
+  cursor: pointer;
+  transition: border-color var(--gecis), color var(--gecis), background var(--gecis);
+}
+
+.sekme:hover {
+  border-color: var(--bakir);
+  color: var(--metin);
+}
+
+.sekme--aktif {
+  color: var(--metin);
+  background: linear-gradient(180deg, var(--kaya-acik), var(--kaya));
+  border-color: var(--altin);
+  box-shadow: inset 0 -2px 0 var(--altin);
+}
+
+.sekme__ad {
+  font-size: 14px;
+  font-weight: 700;
+}
+
+.sekme__alt {
+  font-size: 11px;
+  color: var(--metin-silik);
+}
+
+/* Sekme kapalıyken de haber veren küçük işaret */
+.sekme__isaret {
+  position: absolute;
+  top: 4px;
+  right: 5px;
+  font-size: 11px;
+}
+
+.sekme__isaret--calisma {
+  /* Süren çalışma dikkat çeksin */
+  animation: nabiz 1.6s ease-in-out infinite;
+}
+
+@keyframes nabiz {
+  0%, 100% { opacity: 1; }
+  50%      { opacity: 0.35; }
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .sekme__isaret--calisma { animation: none; }
+}
+
+/*
+  Dükkân sekmesi eskiden margin-left:auto ile şeridin SAĞ UCUNA yaslanıyordu;
+  tesis sekmeleriyle arasında ekran boyu bir boşluk kalıyordu. Artık son
+  tesisin hemen yanında duruyor — ikisi arasında gidip gelmek tek küçük hareket.
+  Ayrımı boşluk yerine ince bir dikey çizgi taşıyor.
+*/
+.sekme--dukkan {
+  justify-content: center;
+  margin-left: 4px;
+  padding-left: 20px;
+  border-left-color: var(--kaya-kenar);
+  box-shadow: inset 1px 0 0 var(--kaya-kenar);
+}
+
+.sekme--dukkan.sekme--aktif {
+  box-shadow: inset 0 -2px 0 var(--altin);
+}
+
+/* "Şu an kaç şey satın alabilirsin" rozeti */
+.sekme__rozet {
+  position: absolute;
+  top: -6px;
+  right: -6px;
+  min-width: 19px;
+  padding: 1px 5px;
+  font-size: 11px;
+  font-weight: 700;
+  text-align: center;
+  color: #1a1200;
+  background: var(--zumrut);
+  border-radius: 999px;
+}
+
+/* --- Katlanabilir bölüm (madenci listesi) --- */
+.katlanir {
+  margin-top: 14px;
+  padding-top: 12px;
+  border-top: 1px dashed var(--kaya-kenar);
+}
+
+.katlanir__baslik {
+  position: relative;
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  width: 100%;
+  padding: 4px 0;
+
+  font-family: inherit;
+  font-size: 13px;
+  font-weight: 700;
+  color: var(--metin-soluk);
+  background: none;
+  border: none;
+  cursor: pointer;
+}
+
+.katlanir__baslik:hover {
+  color: var(--metin);
+}
+
+.katlanir__baslik .sekme__rozet {
+  position: static;          /* başlık içinde akışta dursun */
+}
+
+.katlanir__ok {
+  display: inline-block;
+  transition: transform var(--gecis);
+}
+
+.katlanir__ok--acik {
+  transform: rotate(90deg);
+}
+
+/* Katlanır başlığın hemen altındaki liste, kendi üst çizgisini tekrarlamasın */
+.katlanir .madenciler {
+  margin-top: 8px;
+  padding-top: 0;
+  border-top: none;
 }

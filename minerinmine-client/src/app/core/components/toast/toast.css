@@ -1,0 +1,95 @@
+/* Yigin: ekranin sag ustunde sabit durur, sayfa kaydirmasindan etkilenmez. */
+.yigin {
+  position: fixed;
+  top: 16px;
+  right: 16px;
+  z-index: 1000;
+
+  display: flex;
+  flex-direction: column;
+  gap: 10px;
+  width: min(360px, calc(100vw - 32px));
+
+  /* Yiginin bos alani altindaki butonlari kapatmasin. */
+  pointer-events: none;
+}
+
+.toast {
+  pointer-events: auto;   /* kapatma butonu tiklanabilsin */
+
+  display: flex;
+  align-items: flex-start;
+  gap: 9px;
+  padding: 11px 12px;
+
+  font-size: 13.5px;
+  line-height: 1.35;
+  border-radius: var(--radius-sm);
+  border: 1px solid var(--kaya-kenar);
+  background: linear-gradient(180deg, var(--kaya-acik), var(--kaya));
+  box-shadow: 0 12px 30px rgba(0, 0, 0, 0.45);
+
+  animation: toast-gir 200ms ease-out;
+}
+
+/* Sagdan kayarak girer. */
+@keyframes toast-gir {
+  from { opacity: 0; transform: translateX(24px); }
+  to   { opacity: 1; transform: translateX(0); }
+}
+
+/* Hareketi rahatsiz edici bulan kullanicilar icin animasyonu kapat. */
+@media (prefers-reduced-motion: reduce) {
+  .toast { animation: none; }
+}
+
+.toast--basari {
+  border-color: rgba(61, 220, 151, 0.4);
+  color: #b7f2d8;
+}
+
+.toast--hata {
+  border-color: rgba(255, 92, 103, 0.45);
+  color: #ffb3b8;
+}
+
+.toast--bilgi {
+  border-color: rgba(245, 179, 1, 0.4);
+  color: var(--altin-parlak);
+}
+
+.toast__ikon {
+  flex-shrink: 0;
+  font-size: 14px;
+}
+
+.toast__mesaj {
+  flex: 1;
+}
+
+.toast__kapat {
+  flex-shrink: 0;
+  padding: 0 2px;
+  font-size: 17px;
+  line-height: 1;
+  color: var(--metin-silik);
+  background: none;
+  border: none;
+  cursor: pointer;
+  transition: color var(--gecis);
+}
+
+.toast__kapat:hover {
+  color: var(--metin);
+}
+
+/* Dar ekranda tam genislige yayil. */
+@media (max-width: 520px) {
+  .yigin {
+    top: auto;
+    bottom: 12px;
+    left: 12px;
+    right: 12px;
+    width: auto;
+  }
+}

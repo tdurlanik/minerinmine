@@ -276,3 +276,71 @@ public class BuyFacilityResultDto
     public long NewBalance { get; set; }
     public DateTime ServerTime { get; set; }
 }
+
+// ============================================================================
+// 4. ADIM: OYUNCU ISTATISTIKLERI (sp_GetPlayerStats)
+//
+// Bu rakamlarin tamami Transactions gunlugunden TURETILIR. Hicbiri ayrica
+// tutulmuyor; gunluk en bastan tutuldugu icin sonradan hesaplanabiliyor.
+// ============================================================================
+
+/// <summary>Oynanis ozeti — tek satir.</summary>
+public class StatsSummaryDto
+{
+    public string Username { get; set; } = string.Empty;
+    public DateTime JoinedAt { get; set; }
+
+    /// <summary>Bugune kadar kazanilan toplam Kristal.</summary>
+    public long TotalEarned { get; set; }
+
+    /// <summary>Bugune kadar harcanan toplam Kristal.</summary>
+    public long TotalSpent { get; set; }
+
+    public long CurrentKristal { get; set; }
+    public int ClickCount { get; set; }
+    public int CollectCount { get; set; }
+    public int AdCount { get; set; }
+    public int TotalLevels { get; set; }
+    public int TotalMiners { get; set; }
+    public int FacilityCount { get; set; }
+    public DateTime? LastActionAt { get; set; }
+}
+
+/// <summary>Sebep bazinda kazanc/harcama satiri.</summary>
+public class StatsBreakdownDto
+{
+    /// <summary>CLICK, SELL, FACILITY_UPGRADE, HIRE_MINER, ... (Transactions.Reason)</summary>
+    public string Reason { get; set; } = string.Empty;
+    public long Total { get; set; }
+
+    /// <summary>Bu sebeple kac islem yapildi.</summary>
+    public int Times { get; set; }
+}
+
+/// <summary>Tesis bazinda uretim ozeti.</summary>
+public class StatsFacilityDto
+{
+    public int FacilityTypeId { get; set; }
+    public string FacilityName { get; set; } = string.Empty;
+    public int Level { get; set; }
+    public string ResourceName { get; set; } = string.Empty;
+    public long TotalMined { get; set; }
+    public int MinerCount { get; set; }
+}
+
+public class StatsRankDto
+{
+    public int Position { get; set; }
+    public long TotalWealth { get; set; }
+    public int TotalPlayers { get; set; }
+}
+
+/// <summary>Istatistik ekraninin tamami — SP'nin bes sonuc kumesi.</summary>
+public class PlayerStatsDto
+{
+    public StatsSummaryDto Summary { get; set; } = new();
+    public List<StatsBreakdownDto> Spending { get; set; } = new();
+    public List<StatsBreakdownDto> Earning { get; set; } = new();
+    public List<StatsFacilityDto> Facilities { get; set; } = new();
+    public StatsRankDto? Rank { get; set; }
+}

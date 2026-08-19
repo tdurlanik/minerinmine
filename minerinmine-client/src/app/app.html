@@ -4,3 +4,10 @@
   DashboardComponent basılır.
 -->
 <router-outlet />
+
+<!--
+  Bildirim yığını router-outlet'in DIŞINDA duruyor: sayfa değişince yok olup
+  yeniden kurulmaz, bu yüzden bir ekrandan diğerine geçerken gönderilen
+  bildirim de kaybolmaz.
+-->
+<app-toast />
