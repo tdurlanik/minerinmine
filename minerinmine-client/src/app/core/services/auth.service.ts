@@ -51,6 +51,7 @@ export class AuthService {
   readonly currentUser = this._currentUser.asReadonly();
 
   readonly isLoggedIn = computed(() => this._currentUser() !== null);
+  readonly userId = computed(() => this._currentUser()?.userId ?? 0);
   readonly username = computed(() => this._currentUser()?.username ?? '');
   readonly roles = computed(() => this._currentUser()?.roles ?? []);
   readonly isAdmin = computed(() => this.roles().includes('Admin'));

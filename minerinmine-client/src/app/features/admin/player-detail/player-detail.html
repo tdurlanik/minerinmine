@@ -1,0 +1,184 @@
+<div class="sayfa">
+  <header class="ust">
+    <h1 class="ust__baslik">👤 Oyuncu Detayı</h1>
+    <a class="mim-buton mim-buton--sade ust__buton" routerLink="/admin">← Listeye dön</a>
+  </header>
+
+  <main class="govde">
+
+    @if (yukleniyor()) {
+      <p class="bos">Yükleniyor...</p>
+    } @else if (hataMesaji()) {
+      <div class="mim-uyari"><span>⚠️</span><span>{{ hataMesaji() }}</span></div>
+    } @else if (veri(); as d) {
+      @if (d.player; as o) {
+
+        <!-- ============ KİMLİK ============ -->
+        <section class="kart">
+          <div class="kart__ust">
+            <h2 class="kart__baslik">
+              {{ o.username }}
+              @if (!o.isActive) { <span class="rozet rozet--pasif">dondurulmuş</span> }
+              @if (kendisiMi()) { <span class="rozet">sen</span> }
+            </h2>
+            <span class="kimlik">#{{ o.userId }}</span>
+          </div>
+
+          <dl class="veri">
+            <div class="veri__satir"><dt>E-posta</dt><dd>{{ o.email }}</dd></div>
+            <div class="veri__satir"><dt>Roller</dt><dd>{{ o.roles ?? '—' }}</dd></div>
+            <div class="veri__satir"><dt>Kayıt</dt><dd>{{ tarih(o.createdAt) }}</dd></div>
+            <div class="veri__satir"><dt>Son giriş</dt><dd>{{ tarih(o.lastLoginAt) }}</dd></div>
+            <div class="veri__satir"><dt>Servet</dt><dd>{{ bicimle(o.totalWealth) }}</dd></div>
+            <div class="veri__satir"><dt>Açık oturum</dt><dd>{{ o.activeSessions }}</dd></div>
+            <div class="veri__satir"><dt>Toplam işlem</dt><dd>{{ o.transactionCount }}</dd></div>
+          </dl>
+        </section>
+
+        <!-- ============ YÖNETİM EYLEMLERİ ============ -->
+        <section class="kart kart--eylem">
+          <h2 class="kart__baslik">⚙️ Yönetim Eylemleri</h2>
+
+          @if (kendisiMi()) {
+            <!-- Sunucu zaten reddediyor; burada gizlemek sadece nezaket. -->
+            <p class="kart__aciklama">
+              Kendi hesabın üzerinde durum ve rol değişikliği yapamazsın —
+              bu kural veritabanında, arayüzde değil.
+            </p>
+          } @else {
+            <div class="butonlar">
+              <button type="button" class="mim-buton mim-buton--sade eylem"
+                      [disabled]="islemde()" (click)="durumDegistir()">
+                @if (o.isActive) { 🚫 Hesabı dondur } @else { ✅ Hesabı aç }
+              </button>
+
+              @if (rolVarMi('Admin')) {
+                <button type="button" class="mim-buton mim-buton--sade eylem"
+                        [disabled]="islemde()" (click)="rolDegistir('Admin', false)">
+                  🛡️ Admin rolünü al
+                </button>
+              } @else {
+                <button type="button" class="mim-buton mim-buton--sade eylem"
+                        [disabled]="islemde()" (click)="rolDegistir('Admin', true)">
+                  🛡️ Admin rolü ver
+                </button>
+              }
+
+              <button type="button" class="mim-buton mim-buton--sade eylem"
+                      [disabled]="islemde() || o.activeSessions === 0"
+                      (click)="oturumlariDusur()">
+                🔑 Oturumları düşür ({{ o.activeSessions }})
+              </button>
+            </div>
+          }
+
+          <!-- Kaynak düzeltme: sunucu tarafı Gün 5'ten beri hazırdı, arayüzü yoktu. -->
+          <div class="duzeltme">
+            <h3 class="duzeltme__baslik">Kaynak düzeltme</h3>
+            <p class="kart__aciklama">
+              Her düzeltme <code>Transactions</code> tablosuna <code>ADMIN_ADJUST</code>
+              olarak, senin kimliğinle yazılır. Negatif bakiye oluşturacak işlem reddedilir.
+            </p>
+
+            <div class="duzeltme__form">
+              <select class="mim-input duzeltme__secim" (change)="kaynakSecildi($event)">
+                @for (k of d.resources; track k.resourceTypeId) {
+                  <option [value]="k.resourceTypeId">{{ kaynakAdi(k) }} · {{ k.amount }}</option>
+                }
+              </select>
+
+              <input class="mim-input duzeltme__miktar" type="number" placeholder="+500 / -500"
+                     [value]="miktar()" (input)="miktarDegisti($event)" />
+
+              <button type="button" class="mim-buton duzeltme__buton"
+                      [disabled]="islemde()" (click)="kaynakDuzelt()">
+                Uygula
+              </button>
+            </div>
+          </div>
+        </section>
+
+        <!-- ============ OYUN DURUMU ============ -->
+        <section class="kart">
+          <h2 class="kart__baslik">⛏️ Tesisler</h2>
+          @if (d.facilities.length === 0) {
+            <p class="bos">Tesis yok.</p>
+          } @else {
+            <table class="tablo">
+              <thead>
+                <tr>
+                  <th>Tesis</th><th>Seviye</th><th>Maden</th>
+                  <th class="sag">Madenci</th><th>Durum</th>
+                </tr>
+              </thead>
+              <tbody>
+                @for (t of d.facilities; track t.facilityTypeId) {
+                  <tr>
+                    <td>{{ t.facilityName }}</td>
+                    <td>{{ t.level }} / {{ t.maxLevel }}</td>
+                    <td>{{ t.resourceName }}</td>
+                    <td class="sag">{{ t.minerCount }}</td>
+                    <td>
+                      @if (t.upgradeCompletesAt) {
+                        <span class="calisiyor">⚒️ {{ tarih(t.upgradeCompletesAt) }}</span>
+                      } @else { — }
+                    </td>
+                  </tr>
+                }
+              </tbody>
+            </table>
+          }
+
+          @if (d.miners.length > 0) {
+            <h3 class="duzeltme__baslik">Madenciler</h3>
+            <div class="madenciler">
+              @for (m of d.miners; track m.minerTypeId + '-' + m.facilityName) {
+                <span class="madenci">
+                  {{ m.minerName }} <strong>×{{ m.count }}</strong>
+                  <span class="madenci__tesis">{{ m.facilityName }}</span>
+                </span>
+              }
+            </div>
+          }
+        </section>
+
+        <!-- ============ İŞLEM GEÇMİŞİ ============ -->
+        <section class="kart">
+          <h2 class="kart__baslik">📜 Son 50 İşlem</h2>
+          <p class="kart__aciklama">
+            "Kaynaklarım kayboldu" şikâyetinin cevabı burada. Bu liste ancak
+            <code>Transactions</code> günlüğü en baştan tutulduğu için var.
+          </p>
+
+          @if (d.transactions.length === 0) {
+            <p class="bos">Henüz işlem yok.</p>
+          } @else {
+            <table class="tablo">
+              <thead>
+                <tr>
+                  <th>Zaman</th><th>İşlem</th><th>Kaynak</th>
+                  <th class="sag">Miktar</th><th class="sag">Sonrası</th>
+                </tr>
+              </thead>
+              <tbody>
+                @for (i of d.transactions; track i.id) {
+                  <tr [class.satir--admin]="i.reason === 'ADMIN_ADJUST'">
+                    <td class="tarih">{{ tarih(i.createdAt) }}</td>
+                    <td>{{ sebepAdi(i.reason) }}</td>
+                    <td>{{ i.resourceName }}</td>
+                    <td class="sag" [class.arti]="i.amount > 0" [class.eksi]="i.amount < 0">
+                      {{ i.amount > 0 ? '+' : '' }}{{ bicimle(i.amount) }}
+                    </td>
+                    <td class="sag">{{ bicimle(i.balanceAfter) }}</td>
+                  </tr>
+                }
+              </tbody>
+            </table>
+          }
+        </section>
+
+      }
+    }
+
+  </main>
+</div>

@@ -81,3 +81,179 @@
   .satir { grid-template-columns: 1.5fr 100px; }
   .gizle { display: none; }
 }
+
+/* Satirlar artik <a> etiketi: baglanti gorunumunu sifirlayip
+   tiklanabilir olduklarini vurguluyoruz. */
+.satir--tiklanir,
+.supheli--tiklanir {
+  color: inherit;
+  text-decoration: none;
+  cursor: pointer;
+  transition: background var(--gecis);
+}
+
+.satir--tiklanir:hover,
+.supheli--tiklanir:hover {
+  background: rgba(245, 179, 1, 0.06);
+}
+
+.satir--tiklanir:focus-visible,
+.supheli--tiklanir:focus-visible {
+  outline: 2px solid var(--altin);
+  outline-offset: -2px;
+}
+
+/* ==========================================================================
+   SEKMELER VE EKONOMİ SEKMESİ
+   ========================================================================== */
+
+.sekmeler { display: flex; gap: 8px; flex-wrap: wrap; }
+
+.sekme {
+  padding: 9px 18px; font-family: inherit; font-size: 14px; font-weight: 700;
+  color: var(--metin-soluk); background: var(--kaya);
+  border: 1px solid var(--kaya-kenar); border-radius: var(--radius-sm);
+  cursor: pointer; transition: border-color var(--gecis), color var(--gecis);
+}
+
+.sekme:hover { border-color: var(--bakir); color: var(--metin); }
+
+.sekme--aktif {
+  color: var(--metin); border-color: var(--zumrut);
+  box-shadow: inset 0 -2px 0 var(--zumrut);
+}
+
+/* --- Dönem seçici --- */
+.donem { display: flex; align-items: center; gap: 8px; flex-wrap: wrap; }
+.donem__etiket { font-size: 12.5px; color: var(--metin-silik); }
+
+.donem__buton {
+  padding: 6px 13px; font-family: inherit; font-size: 12.5px;
+  color: var(--metin-soluk); background: var(--kaya-derin);
+  border: 1px solid var(--kaya-kenar); border-radius: 999px; cursor: pointer;
+  transition: border-color var(--gecis), color var(--gecis);
+}
+
+.donem__buton--aktif { border-color: var(--altin); color: var(--altin-parlak); }
+
+/* --- Özet kartları --- */
+.ozet {
+  display: grid; grid-template-columns: repeat(auto-fit, minmax(150px, 1fr));
+  gap: 10px; margin-top: 12px;
+}
+
+.ozet__kart {
+  display: flex; flex-direction: column; gap: 2px; padding: 13px 15px;
+  background: var(--kaya-derin); border: 1px solid var(--kaya-kenar);
+  border-left: 3px solid var(--kaya-kenar); border-radius: var(--radius-sm);
+}
+
+.ozet__kart--altin  { border-left-color: var(--altin); }
+.ozet__kart--zumrut { border-left-color: var(--zumrut); }
+.ozet__kart--bakir  { border-left-color: var(--bakir); }
+.ozet__kart--uyari  { border-left-color: var(--yakut); }
+
+.ozet__etiket {
+  font-size: 10.5px; text-transform: uppercase; letter-spacing: 0.6px;
+  color: var(--metin-silik);
+}
+
+.ozet__deger { font-size: 21px; font-weight: 700; font-variant-numeric: tabular-nums; }
+.ozet__alt { font-size: 11.5px; color: var(--metin-silik); }
+
+.ozet__kart--altin .ozet__deger  { color: var(--altin-parlak); }
+.ozet__kart--zumrut .ozet__deger { color: var(--zumrut); }
+.ozet__kart--bakir .ozet__deger  { color: var(--bakir); }
+.ozet__kart--uyari .ozet__deger  { color: #ffb3b8; }
+
+/* --- Çubuklar --- */
+.cubuk {
+  height: 7px; background: var(--kaya-derin); border: 1px solid var(--kaya-kenar);
+  border-radius: 999px; overflow: hidden;
+}
+
+.cubuk__dolum {
+  display: block; height: 100%;
+  background: linear-gradient(90deg, var(--altin-koyu), var(--altin-parlak));
+  transition: width var(--gecis);
+}
+
+.cubuk__dolum--giren { background: linear-gradient(90deg, #1f7a55, var(--zumrut)); }
+.cubuk__dolum--cikan { background: linear-gradient(90deg, #8a4a2c, var(--bakir)); }
+
+/* --- Günlük akış satırı --- */
+.gunluk {
+  display: grid; grid-template-columns: 66px 1fr auto;
+  gap: 12px; align-items: center; padding: 9px 0;
+  border-top: 1px solid var(--kaya-kenar);
+}
+
+.gunluk:first-of-type { border-top: none; }
+
+.gunluk__tarih { font-size: 12.5px; color: var(--metin-silik); white-space: nowrap; }
+.gunluk__cubuklar { display: flex; flex-direction: column; gap: 4px; }
+
+.gunluk__deger {
+  display: flex; gap: 10px; font-size: 12px;
+  font-variant-numeric: tabular-nums; white-space: nowrap;
+}
+
+.giren { color: var(--zumrut); }
+.cikan { color: var(--bakir); }
+.gunluk__oyuncu { color: var(--metin-silik); }
+
+/* --- Mekanik dağılımı --- */
+.dagilim { margin-top: 12px; }
+
+.dagilim__ust {
+  display: flex; justify-content: space-between; gap: 12px;
+  margin-bottom: 5px; font-size: 13px;
+}
+
+.dagilim__deger {
+  color: var(--metin-silik); font-variant-numeric: tabular-nums; white-space: nowrap;
+}
+
+/* --- Gerçek tablolar (oyuncu listesindeki .tablo kabuğundan ayrı) --- */
+.veri-tablo { width: 100%; border-collapse: collapse; font-size: 13px; margin-top: 10px; }
+
+.veri-tablo th {
+  padding: 8px 10px; text-align: left; font-size: 11px; text-transform: uppercase;
+  letter-spacing: 0.5px; color: var(--metin-silik);
+  border-bottom: 1px solid var(--kaya-kenar);
+}
+
+.veri-tablo td { padding: 9px 10px; border-bottom: 1px solid var(--kaya-kenar); }
+.veri-tablo tbody tr:last-child td { border-bottom: none; }
+
+.sag { text-align: right; font-variant-numeric: tabular-nums; }
+.oran { margin-left: 6px; font-size: 11px; color: var(--metin-silik); }
+
+/* Hiç kimsenin ulaşamadığı satır: sıfırın kendisi bir bulgudur. */
+.satir--bos td { color: var(--metin-silik); background: rgba(255, 92, 103, 0.05); }
+
+.alt__baslik { margin: 20px 0 2px; font-size: 14px; font-weight: 700; }
+
+.kaynak-notu {
+  margin: 0; font-size: 12.5px; line-height: 1.7;
+  color: var(--metin-silik); text-align: center;
+}
+
+code {
+  padding: 1px 5px; font-size: 12px;
+  font-family: 'Cascadia Code', Consolas, 'Courier New', monospace;
+  background: var(--kaya-derin); border: 1px solid var(--kaya-kenar);
+  border-radius: 5px; color: var(--altin-parlak);
+}
+
+@media (max-width: 620px) {
+  .gunluk { grid-template-columns: 54px 1fr; }
+  .gunluk__deger { grid-column: 2; flex-wrap: wrap; }
+  .veri-tablo { display: block; overflow-x: auto; white-space: nowrap; }
+}
+
+/* --- Yönetici işlem günlüğü --- */
+.baglanti { color: var(--altin); text-decoration: none; }
+.baglanti:hover { text-decoration: underline; }
+
+.ayrinti { color: var(--metin-silik); }

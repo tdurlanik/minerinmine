@@ -5,9 +5,28 @@
   </header>
 
   <main class="govde">
+
+    <!-- Sekme şeridi: oyun ekranındaki desenle aynı, panel tek ekrana sığsın. -->
+    <nav class="sekmeler" role="tablist">
+      <button type="button" role="tab" class="sekme"
+              [class.sekme--aktif]="aktifSekme() === 'oyuncular'"
+              [attr.aria-selected]="aktifSekme() === 'oyuncular'"
+              (click)="sekmeSec('oyuncular')">👥 Oyuncular</button>
+      <button type="button" role="tab" class="sekme"
+              [class.sekme--aktif]="aktifSekme() === 'ekonomi'"
+              [attr.aria-selected]="aktifSekme() === 'ekonomi'"
+              (click)="sekmeSec('ekonomi')">📈 Ekonomi</button>
+      <button type="button" role="tab" class="sekme"
+              [class.sekme--aktif]="aktifSekme() === 'gunluk'"
+              [attr.aria-selected]="aktifSekme() === 'gunluk'"
+              (click)="sekmeSec('gunluk')">🧾 Yönetici İşlemleri</button>
+    </nav>
+
     @if (hataMesaji()) {
       <div class="mim-uyari"><span>⚠️</span><span>{{ hataMesaji() }}</span></div>
     }
+
+    @if (aktifSekme() === 'oyuncular') {
 
     @if (supheliler().length > 0) {
       <section class="kart kart--uyari">
@@ -16,12 +35,12 @@
           Hile kanıtı değil, inceleme listesi — yüksek kazanç meşru da olabilir.
         </p>
         @for (s of supheliler(); track s.userId + s.resourceCode) {
-          <div class="supheli">
+          <a class="supheli supheli--tiklanir" [routerLink]="['/admin/player', s.userId]">
             <span class="supheli__ad">{{ s.username }}</span>
             <span class="supheli__bilgi">
               {{ s.resourceCode }} · +{{ bicimle(s.gain) }} · {{ s.transactionCount }} işlem
             </span>
-          </div>
+          </a>
         }
       </section>
     }
@@ -38,7 +57,7 @@
       } @else if (oyuncular().length === 0) {
         <p class="bos">Kayıt bulunamadı.</p>
       } @else {
-        <div class="tablo">
+        <div class="tablo-liste">
           <div class="satir satir--baslik">
             <span>Kullanıcı</span>
             <span class="gizle">Roller</span>
@@ -48,8 +67,10 @@
             <span class="gizle">Son giriş</span>
           </div>
 
+          <!-- Satırın tamamı detay sayfasına bağlantı: yönetim işlerinin
+               tamamı orada, listede yalnızca özet var. -->
           @for (o of oyuncular(); track o.userId) {
-            <div class="satir">
+            <a class="satir satir--tiklanir" [routerLink]="['/admin/player', o.userId]">
               <span class="satir__ad">
                 {{ o.username }}
                 @if (!o.isActive) { <span class="pasif">pasif</span> }
@@ -59,7 +80,7 @@
               <span class="gizle">{{ o.totalLevels }}</span>
               <span class="gizle">{{ o.totalMiners }}</span>
               <span class="gizle tarih">{{ tarih(o.lastLoginAt) }}</span>
-            </div>
+            </a>
           }
         </div>
 
@@ -72,5 +93,245 @@
         </div>
       }
     </section>
+
+    }
+
+    <!-- ======================= EKONOMİ SEKMESİ ======================= -->
+    @if (aktifSekme() === 'ekonomi') {
+
+      <div class="donem">
+        <span class="donem__etiket">Dönem:</span>
+        @for (g of donemler; track g) {
+          <button type="button" class="donem__buton" [class.donem__buton--aktif]="gun() === g"
+                  (click)="gunDegisti(g)">{{ g }} gün</button>
+        }
+      </div>
+
+      @if (ekonomiYukleniyor()) {
+        <p class="bos">Günlük okunuyor...</p>
+      } @else if (ekonomi(); as e) {
+
+        <!-- ============ FAUCET / SINK ============ -->
+        <section class="kart">
+          <h2 class="kart__baslik">💧 Para Musluğu ve Gideri</h2>
+          <p class="kart__aciklama">
+            <strong>Faucet</strong> ekonomiye giren Kristal (satış, reklam),
+            <strong>sink</strong> çıkan Kristal (geliştirme, madenci, atlama).
+            Faucet sürekli sink'i aşıyorsa para birikir, fiyatlar anlamsızlaşır
+            ve ilerleme hissi kaybolur.
+          </p>
+
+          <div class="ozet">
+            <div class="ozet__kart ozet__kart--zumrut">
+              <span class="ozet__etiket">Giren ({{ e.summary.days }} gün)</span>
+              <span class="ozet__deger">{{ bicimle(e.summary.periodFaucet) }}</span>
+            </div>
+            <div class="ozet__kart ozet__kart--bakir">
+              <span class="ozet__etiket">Çıkan</span>
+              <span class="ozet__deger">{{ bicimle(e.summary.periodSink) }}</span>
+            </div>
+            <div class="ozet__kart" [class.ozet__kart--uyari]="akisOrani() > 1.2">
+              <span class="ozet__etiket">Oran</span>
+              <span class="ozet__deger">{{ oran(akisOrani()) }}×</span>
+              <span class="ozet__alt">
+                @if (akisOrani() > 1.2) { para birikiyor }
+                @else if (akisOrani() < 0.9) { para yakılıyor }
+                @else { dengeli }
+              </span>
+            </div>
+            <div class="ozet__kart ozet__kart--altin">
+              <span class="ozet__etiket">Dolaşımdaki Kristal</span>
+              <span class="ozet__deger">{{ bicimle(e.summary.circulatingKristal) }}</span>
+            </div>
+          </div>
+        </section>
+
+        <!-- ============ OYUNCU HAREKETİ ============ -->
+        <section class="kart">
+          <h2 class="kart__baslik">👥 Oyuncu Hareketi</h2>
+          <div class="ozet">
+            <div class="ozet__kart">
+              <span class="ozet__etiket">Toplam</span>
+              <span class="ozet__deger">{{ e.summary.totalPlayers }}</span>
+            </div>
+            <div class="ozet__kart">
+              <span class="ozet__etiket">Bugün oynayan</span>
+              <span class="ozet__deger">{{ e.summary.activeToday }}</span>
+            </div>
+            <div class="ozet__kart">
+              <span class="ozet__etiket">Dönemde oynayan</span>
+              <span class="ozet__deger">{{ e.summary.activeInPeriod }}</span>
+            </div>
+            <div class="ozet__kart">
+              <span class="ozet__etiket">Yeni kayıt</span>
+              <span class="ozet__deger">{{ e.summary.newPlayers }}</span>
+            </div>
+          </div>
+        </section>
+
+        <!-- ============ GÜNLÜK AKIŞ ============ -->
+        <section class="kart">
+          <h2 class="kart__baslik">📅 Günlük Akış</h2>
+          @if (e.daily.length === 0) {
+            <p class="bos">Bu dönemde hiç işlem yok.</p>
+          } @else {
+            <!-- İki çubuk aynı ölçeği paylaşıyor; ayrı ölçekte kıyaslanamazlardı. -->
+            @for (g of e.daily; track g.gun) {
+              <div class="gunluk">
+                <span class="gunluk__tarih">{{ kisaTarih(g.gun) }}</span>
+                <div class="gunluk__cubuklar">
+                  <div class="cubuk">
+                    <span class="cubuk__dolum cubuk__dolum--giren"
+                          [style.width.%]="yuzde(g.faucet, gunlukOlcek())"></span>
+                  </div>
+                  <div class="cubuk">
+                    <span class="cubuk__dolum cubuk__dolum--cikan"
+                          [style.width.%]="yuzde(g.sink, gunlukOlcek())"></span>
+                  </div>
+                </div>
+                <span class="gunluk__deger">
+                  <span class="giren">+{{ bicimle(g.faucet) }}</span>
+                  <span class="cikan">−{{ bicimle(g.sink) }}</span>
+                  <span class="gunluk__oyuncu">{{ g.activePlayers }} oyuncu</span>
+                </span>
+              </div>
+            }
+          }
+        </section>
+
+        <!-- ============ MEKANİK BAZINDA ============ -->
+        <section class="kart">
+          <h2 class="kart__baslik">⚙️ Hangi Mekanik Ne Kadar?</h2>
+          <p class="kart__aciklama">
+            <strong>Oyuncu</strong> sayısı önemli: toplam büyük ama oyuncu sayısı 1 ise
+            bu genel eğilim değil, tek kişinin davranışıdır.
+          </p>
+
+          @for (r of e.reasons; track r.reason) {
+            <div class="dagilim">
+              <div class="dagilim__ust">
+                <span>{{ r.direction > 0 ? '💧' : '🔥' }} {{ sebepAdi(r.reason) }}</span>
+                <span class="dagilim__deger">
+                  {{ bicimle(r.total) }} · {{ r.times }} işlem · {{ r.playerCount }} oyuncu
+                </span>
+              </div>
+              <div class="cubuk">
+                <span class="cubuk__dolum"
+                      [class.cubuk__dolum--giren]="r.direction > 0"
+                      [class.cubuk__dolum--cikan]="r.direction < 0"
+                      [style.width.%]="yuzde(r.total, sebepOlcek())"></span>
+              </div>
+            </div>
+          }
+        </section>
+
+        <!-- ============ İLERLEME DAĞILIMI ============ -->
+        <section class="kart">
+          <h2 class="kart__baslik">🏭 Oyuncular Nerede Takılıyor?</h2>
+          <table class="veri-tablo">
+            <thead>
+              <tr>
+                <th>Tesis</th><th class="sag">Sahip</th>
+                <th class="sag">Ort. seviye</th><th class="sag">En yüksek</th>
+              </tr>
+            </thead>
+            <tbody>
+              @for (f of e.facilities; track f.facilityTypeId) {
+                <tr [class.satir--bos]="f.ownerCount === 0">
+                  <td>{{ f.facilityName }}</td>
+                  <td class="sag">
+                    {{ f.ownerCount }}
+                    <span class="oran">%{{ tamsayi(yuzde(f.ownerCount, e.summary.totalPlayers)) }}</span>
+                  </td>
+                  <td class="sag">{{ ondalik(f.avgLevel) }}</td>
+                  <td class="sag">{{ f.maxLevel }} / {{ f.capLevel }}</td>
+                </tr>
+              }
+            </tbody>
+          </table>
+
+          <h3 class="alt__baslik">Kazma türleri</h3>
+          <p class="kart__aciklama">
+            Hiç açılmayan bir kazma türü ya çok pahalıdır ya kazancı ikna edici değildir.
+          </p>
+          <table class="veri-tablo">
+            <thead>
+              <tr>
+                <th>Kazma</th><th class="sag">Bedel</th><th class="sag">Açan oyuncu</th>
+              </tr>
+            </thead>
+            <tbody>
+              @for (c of e.clicks; track c.clickTypeId) {
+                <tr [class.satir--bos]="c.unlockedBy === 0">
+                  <td>{{ c.clickName }}</td>
+                  <td class="sag">{{ bicimle(c.unlockCost) }}</td>
+                  <td class="sag">
+                    {{ c.unlockedBy }}
+                    <span class="oran">%{{ tamsayi(yuzde(c.unlockedBy, c.totalPlayers)) }}</span>
+                  </td>
+                </tr>
+              }
+            </tbody>
+          </table>
+        </section>
+
+        <p class="kaynak-notu">
+          Bu sekmedeki hiçbir sayı ayrıca tutulmuyor; hepsi <code>Transactions</code>
+          günlüğünden hesaplanıyor. <code>tools/denge-simulasyonu.js</code> oyunun nasıl
+          oynanabileceğini <em>tahmin eder</em> — bu ekran oyuncuların gerçekte ne
+          yaptığını <em>ölçer</em>.
+        </p>
+
+      }
+    }
+
+    <!-- ======================= YÖNETİCİ İŞLEMLERİ SEKMESİ ======================= -->
+    @if (aktifSekme() === 'gunluk') {
+
+      <section class="kart">
+        <div class="kart__ust">
+          <h2 class="kart__baslik">🧾 Son Yönetici İşlemleri</h2>
+          <button type="button" class="mim-buton mim-buton--sade sayfalama__buton"
+                  [disabled]="gunlukYukleniyor()" (click)="gunlukYukle()">Yenile</button>
+        </div>
+        <p class="kart__aciklama">
+          Denetim izi, okunamıyorsa denetim izi değildir. Kayıtlar iki yerden
+          birleşiyor: kaynak düzeltmeleri <code>Transactions</code>'ta (bakiye
+          geçmişinin parçası olmak zorunda), diğer eylemler
+          <code>AdminActions</code>'ta.
+        </p>
+
+        @if (gunlukYukleniyor()) {
+          <p class="bos">Yükleniyor...</p>
+        } @else if (gunlukKayitlar().length === 0) {
+          <p class="bos">Henüz yönetici işlemi yok.</p>
+        } @else {
+          <table class="veri-tablo">
+            <thead>
+              <tr>
+                <th>Zaman</th><th>Yönetici</th><th>Hedef</th><th>İşlem</th><th>Ayrıntı</th>
+              </tr>
+            </thead>
+            <tbody>
+              @for (k of gunlukKayitlar(); track k.createdAt + k.action + k.targetUserId) {
+                <tr>
+                  <td class="tarih">{{ tarih(k.createdAt) }}</td>
+                  <td>{{ k.adminUsername }}</td>
+                  <td>
+                    <a class="baglanti" [routerLink]="['/admin/player', k.targetUserId]">
+                      {{ k.targetUsername }}
+                    </a>
+                  </td>
+                  <td>{{ eylemIkonu(k.action) }} {{ eylemAdi(k.action) }}</td>
+                  <td class="ayrinti">{{ k.detail }}</td>
+                </tr>
+              }
+            </tbody>
+          </table>
+        }
+      </section>
+
+    }
+
   </main>
 </div>

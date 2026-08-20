@@ -59,6 +59,16 @@ export const routes: Routes = [
     loadComponent: () => import('./features/admin/admin').then((m) => m.AdminComponent)
   },
   {
+    // ':id' bir ROTA PARAMETRESIDIR: /admin/player/7 adresi bu rotayla eşleşir
+    // ve bileşen id'yi ActivatedRoute üzerinden okur. Sıralamada 'admin'in
+    // ALTINDA olması gerekmez — iki yol da farklı olduğu için çakışmazlar.
+    path: 'admin/player/:id',
+    title: 'Oyuncu Detayı · MinerInMine',
+    canActivate: [authGuard, adminGuard],
+    loadComponent: () =>
+      import('./features/admin/player-detail/player-detail').then((m) => m.PlayerDetailComponent)
+  },
+  {
     path: '**', // yukarıdakilerin hiçbiriyle eşleşmeyen her adres
     redirectTo: 'login'
   }
