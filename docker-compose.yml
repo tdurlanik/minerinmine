@@ -1,0 +1,180 @@
+# ============================================================================
+#  MinerInMine — Docker Compose
+#
+#  ÇALIŞTIRMA
+#    docker compose up -d          -> her şeyi ayağa kaldırır
+#    docker compose logs -f db-init -> veritabanı kurulumunu izler
+#    docker compose down            -> durdurur (veri kalır)
+#    docker compose down -v         -> durdurur ve VERİYİ DE SİLER
+#
+#  NEDEN COMPOSE?
+#  Bu projede üç ayrı parça var: veritabanı, API ve tarayıcı arayüzü. Üçünü
+#  elle tek tek başlatmak, aralarındaki bağlantıyı elle ayarlamak ve doğru
+#  sırayı takip etmek gerekiyordu. Compose bunların tamamını tek dosyada
+#  tarif eder; "docker compose up" tek komutu yeter.
+#
+#  SERVİSLER BİRBİRİNİ NASIL BULUR?
+#  Compose her servise, adıyla çözülen bir ağ adı verir. API veritabanına
+#  "localhost" ile değil, servis adı olan "sqlserver" ile bağlanır — çünkü
+#  her container kendi içinde ayrı bir makinedir ve onun "localhost"u
+#  kendisidir, veritabanı değil.
+# ============================================================================
+
+services:
+
+  # ==========================================================================
+  # 1. VERİTABANI — SQL Server 2022 (Express sürümü, ücretsiz)
+  # ==========================================================================
+  sqlserver:
+    image: mcr.microsoft.com/mssql/server:2022-latest
+    container_name: minerinmine-sql
+
+    environment:
+      # Microsoft'un lisans şartlarını kabul beyanı; olmadan container açılmaz.
+      ACCEPT_EULA: "Y"
+      # DİKKAT: geliştirme için yer tutucu parola. Gerçek bir sunucuda
+      # ortam değişkeninden ya da bir secret yöneticisinden okunur.
+      MSSQL_SA_PASSWORD: "MinerInMine_Dev_2026!"
+      MSSQL_PID: "Express"
+
+    ports:
+      # "makine:container" — dışarıdan localhost:1433 ile bağlanılabilir.
+      # Bu satır SADECE geliştirme kolaylığı için var (SSMS'ten bağlanmak
+      # istersen). API'nin bağlanması için gerekli DEĞİL; o, iç ağdan gider.
+      - "1433:1433"
+
+    volumes:
+      # KALICI VERİ. Container silinince içindeki her şey gider; veritabanı
+      # dosyalarını bir "volume" içinde tutarsak container'ı yeniden
+      # oluştursak bile veri yerinde kalır.
+      - mssql-data:/var/opt/mssql
+
+    restart: unless-stopped
+
+  # ==========================================================================
+  # 2. VERİTABANI KURULUMU — script'leri sırayla uygular
+  #
+  # Bu servis bir kez çalışır, işini bitirir ve kapanır (uzun ömürlü değil).
+  #
+  # NEDEN AYRI BİR SERVİS?
+  # Veritabanı imajı boş gelir; içindeki tabloları biz oluşturuyoruz. Şu ana
+  # kadar bunu elle yapıyorduk (sqlcmd ile 14 script). Burada o el emeği
+  # otomatikleşiyor — projeyi ilk kez açan biri tek komutla aynı veritabanına
+  # sahip oluyor.
+  #
+  # DOSYA SIRASI: /scripts/*.sql alfabetik sıralanır ve dosyalar 01'den 14'e
+  # iki haneli numaralandığı için sıra kendiliğinden doğru olur. Baştan
+  # "01_" diye numaralandırmanın karşılığını burada alıyoruz.
+  # ==========================================================================
+  db-init:
+    image: mcr.microsoft.com/mssql-tools
+    container_name: minerinmine-db-init
+
+    depends_on:
+      # DİKKAT: depends_on yalnızca "önce başlat" der, "hazır olmasını bekle"
+      # DEMEZ. SQL Server açılması 20-30 saniye sürer. Bu yüzden aşağıdaki
+      # komut, bağlanana kadar deneyen bir bekleme döngüsüyle başlıyor.
+      - sqlserver
+
+    volumes:
+      # ro = read-only. Kurulum script'leri yalnızca okunur, değiştirilemez.
+      - ./database:/scripts:ro
+
+    # $$ yazımı Compose'a "bu değişkeni sen değil, container içindeki kabuk
+    # çözsün" demek için gerekli.
+    #
+    # NOT: Windows'ta script'leri "sqlcmd -f 65001" ile çalıştırıyorduk.
+    # Buradaki komutta o seçenek YOK — çünkü -f (kod sayfası) Windows'a özgü
+    # bir seçenek ve Linux sqlcmd onu tanımıyor. Zaten gerek de yok: Windows
+    # konsolu eski bir kod sayfasına düştüğü için Türkçe karakterler bozuluyor
+    # ve -f 65001 ile UTF-8'e zorlanıyordu. Linux'ta her şey zaten UTF-8.
+    #
+    # -b: sqlcmd hata görünce sıfırdan farklı bir kodla çıksın. Olmazsa
+    # hatalı bir script sessizce atlanır ve sorunu çok sonra fark ederdik.
+    command: >
+      bash -c '
+      SQLCMD=/opt/mssql-tools/bin/sqlcmd;
+      PAROLA="MinerInMine_Dev_2026!";
+      echo "SQL Server bekleniyor...";
+      for i in $$(seq 1 60); do
+        $$SQLCMD -S sqlserver -U sa -P "$$PAROLA" -Q "SELECT 1" > /dev/null 2>&1 && break;
+        sleep 2;
+      done;
+      $$SQLCMD -S sqlserver -U sa -P "$$PAROLA" -Q "SELECT 1" > /dev/null 2>&1 || { echo "SQL Server acilmadi."; exit 1; };
+      echo "Baglanti kuruldu. Scriptler uygulaniyor...";
+      for f in /scripts/*.sql; do
+        echo "--> $$(basename $$f)";
+        $$SQLCMD -S sqlserver -U sa -P "$$PAROLA" -b -i "$$f" || exit 1;
+      done;
+      echo "TAMAM: tum scriptler uygulandi."'
+
+    # Bu servis işini bitirince kapanmalı; yeniden başlatılmamalı.
+    restart: "no"
+
+  # ==========================================================================
+  # 3. API — .NET 8 Web API
+  # ==========================================================================
+  api:
+    build:
+      # Bağlam (context) depo kökü: Dockerfile'ın erişebileceği dosyaların
+      # sınırı burasıdır. Kökü verdik ki ileride başka klasörlere de
+      # erişebilelim; Dockerfile içindeki yollar bu köke göre yazıldı.
+      context: .
+      dockerfile: MinerInMine.Api/Dockerfile
+    container_name: minerinmine-api
+
+    depends_on:
+      - sqlserver
+
+    environment:
+      ASPNETCORE_ENVIRONMENT: "Production"
+
+      # AYARLARI ORTAM DEĞİŞKENİYLE EZMEK
+      # .NET'te iç içe ayarlar çift alt çizgiyle yazılır:
+      #   appsettings.json'daki  ConnectionStrings:Default
+      #   ortam değişkeni olarak ConnectionStrings__Default
+      # Ortam değişkeni her zaman appsettings.json'ı ezer. Böylece imajın
+      # içindeki dosyaya dokunmadan farklı ortamlara aynı imaj gönderilir.
+      #
+      # Sunucu adı "sqlserver": Compose servis adı. "localhost" YAZAMAYIZ —
+      # her container kendi içinde ayrı bir makinedir ve onun localhost'u
+      # veritabanı değil, kendisidir.
+      ConnectionStrings__Default: "Server=sqlserver,1433;Database=MinerInMineDb;User Id=sa;Password=MinerInMine_Dev_2026!;TrustServerCertificate=True;MultipleActiveResultSets=True;"
+
+      # Tarayıcı artık her şeyi 8080'den (nginx) gördüğü için istekler aynı
+      # origin'den geliyor ve CORS devreye girmiyor. Yine de doğru değeri
+      # yazıyoruz: birinin doğrudan API'ye bağlandığı durumda geçerli olsun.
+      Cors__AllowedOrigins__0: "http://localhost:8080"
+
+    # API'yi dışarıya AÇMIYORUZ. Tarayıcı ona nginx üzerinden ulaşıyor.
+    # Yalnız Swagger'a doğrudan bakmak istersen aşağıdaki satırı aç:
+    # ports:
+    #   - "5080:8080"
+
+    restart: unless-stopped
+
+  # ==========================================================================
+  # 4. İSTEMCİ — Angular (nginx ile sunuluyor)
+  # ==========================================================================
+  client:
+    build:
+      context: ./minerinmine-client
+      dockerfile: Dockerfile
+    container_name: minerinmine-client
+
+    depends_on:
+      - api
+
+    ports:
+      # Uygulamanın tek giriş kapısı: http://localhost:8080
+      - "8080:80"
+
+    restart: unless-stopped
+
+# ============================================================================
+# VOLUME TANIMI
+# Adlandırılmış volume: yönetimi Docker'a bırakılır, container'dan bağımsız
+# yaşar. "docker compose down" veriyi silmez; silmek için "-v" gerekir.
+# ============================================================================
+volumes:
+  mssql-data:

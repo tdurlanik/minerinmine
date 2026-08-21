@@ -1,0 +1,11 @@
+# Bu dosyalar imaja HIC GIRMEZ.
+#
+# node_modules ozellikle onemli: Windows'ta kurulmus paketler Linux
+# container'inda calismaz, ustelik ~400 MB'i bosuna kopyalanir.
+# Derleme sirasinda "npm ci" zaten temiz bir kurulum yapiyor.
+node_modules
+dist
+.angular
+.vscode
+.git
+*.log

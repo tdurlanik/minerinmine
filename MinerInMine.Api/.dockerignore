@@ -1,0 +1,6 @@
+# Derleme ciktilari imaja girmemeli: Windows'ta uretilmis dosyalar
+# Linux container'inda ise yaramaz ve onbellegi bozar.
+bin
+obj
+.vs
+*.user
