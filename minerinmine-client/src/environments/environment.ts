@@ -15,5 +15,12 @@
  */
 export const environment = {
   production: true,
-  apiUrl: '/api'
+  apiUrl: '/api',
+
+  /**
+   * SignalR hub adresi — burada da goreli.
+   * nginx "/hubs" ile baslayan istekleri API container'ina iletiyor ve
+   * WebSocket'e yukseltme basliklarini (Upgrade/Connection) geciriyor.
+   */
+  hubUrl: '/hubs'
 };

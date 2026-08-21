@@ -4,6 +4,7 @@ using Microsoft.AspNetCore.Authentication.JwtBearer;
 using Microsoft.IdentityModel.Tokens;
 using Microsoft.OpenApi.Models;
 using MinerInMine.Api.Data;
+using MinerInMine.Api.Hubs;
 using MinerInMine.Api.Options;
 using MinerInMine.Api.Services;
 
@@ -47,9 +48,13 @@ builder.Services.AddScoped<IUserRepository, UserRepository>();
 builder.Services.AddScoped<IAuthService, AuthService>();
 builder.Services.AddScoped<IGameRepository, GameRepository>();
 builder.Services.AddScoped<IAdminRepository, AdminRepository>();
+builder.Services.AddScoped<IChatRepository, ChatRepository>();
 builder.Services.AddScoped<IGameService, GameService>();
 
 builder.Services.AddControllers();
+
+// SignalR: canli sohbet icin WebSocket altyapisi.
+builder.Services.AddSignalR();
 
 // ----------------------------------------------------------------------------
 // 2) JWT KİMLİK DOĞRULAMA
@@ -114,6 +119,38 @@ builder.Services
             // [Authorize(Roles = "Admin")] tam olarak RoleClaimType'a bakar.
             RoleClaimType = "role",
             NameClaimType = "name"
+        };
+
+        // --------------------------------------------------------------------
+        // SIGNALR ICIN ZORUNLU AYAR: token'i sorgu dizesinden de oku.
+        //
+        // SORUN: Tarayicinin WebSocket API'si ISTEK BASLIGI GONDEREMEZ.
+        // Siradan HTTP isteklerinde token "Authorization: Bearer ..." basligiyla
+        // gidiyor; WebSocket el sikismasinda boyle bir imkan yok. Bu yuzden
+        // SignalR token'i adres satirina koyar: /hubs/chat?access_token=...
+        //
+        // Asagidaki olay, istek bir hub adresine gidiyorsa token'i oradan alip
+        // dogrulama zincirine verir. Bu ayar olmadan hub'a yapilan her baglanti
+        // 401 doner ve sohbet hic calismaz.
+        //
+        // GUVENLIK NOTU: Adres satirindaki token sunucu gunluklerine dusebilir.
+        // Riski sinirlayan sey access token'in kisa omurlu (15 dakika) olmasi
+        // ve yenileme token'inin ayri, HttpOnly cookie'de durmasi.
+        // --------------------------------------------------------------------
+        options.Events = new JwtBearerEvents
+        {
+            OnMessageReceived = context =>
+            {
+                var accessToken = context.Request.Query["access_token"];
+
+                if (!string.IsNullOrEmpty(accessToken) &&
+                    context.HttpContext.Request.Path.StartsWithSegments("/hubs"))
+                {
+                    context.Token = accessToken;
+                }
+
+                return Task.CompletedTask;
+            }
         };
     });
 
@@ -233,5 +270,9 @@ app.UseCors(CorsPolicyName);   // 1. Tarayıcıya "bu origin'e izin var" de
 app.UseAuthentication();       // 2. Token'ı oku, "sen kimsin?" sorusunu cevapla
 app.UseAuthorization();        // 3. "Bu işi yapmaya yetkin var mı?" sorusunu cevapla
 app.MapControllers();          // 4. İsteği doğru controller metoduna yönlendir
+
+// SignalR hub adresi. Sıra önemli: UseAuthentication/UseAuthorization'dan
+// SONRA gelmeli ki [Authorize] hub'da da çalışsın.
+app.MapHub<ChatHub>("/hubs/chat");
 
 app.Run();

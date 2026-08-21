@@ -11,5 +11,14 @@
  */
 export const environment = {
   production: false,
-  apiUrl: 'http://localhost:5080/api'
+  apiUrl: 'http://localhost:5080/api',
+
+  /**
+   * SignalR hub adresi.
+   *
+   * apiUrl'den ayri tutuluyor cunku hub'lar /api altinda degil: bunlar
+   * controller degil, ayri bir uc turu. Sunucuda "/hubs/chat" olarak
+   * haritalandi (Program.cs -> app.MapHub).
+   */
+  hubUrl: 'http://localhost:5080/hubs'
 };

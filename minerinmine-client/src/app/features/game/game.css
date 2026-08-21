@@ -855,3 +855,105 @@
   padding-top: 0;
   border-top: none;
 }
+
+/* ==========================================================================
+   MADEN SOHBETİ
+   ========================================================================== */
+
+.sohbet {
+  display: flex;
+  flex-direction: column;
+  background: linear-gradient(180deg, var(--kaya-acik), var(--kaya));
+  border: 1px solid var(--kaya-kenar);
+  border-left: 3px solid var(--bakir);
+  border-radius: var(--radius);
+  padding: 16px 18px;
+}
+
+.sohbet__ust {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 12px;
+  margin-bottom: 12px;
+}
+
+.sohbet__baslik { margin: 0; font-size: 16px; font-weight: 700; }
+
+.sohbet__durum { font-size: 12px; color: var(--metin-silik); white-space: nowrap; }
+.sohbet__durum--bagli { color: var(--zumrut); }
+.sohbet__durum--baglaniyor { color: var(--altin); }
+.sohbet__durum--kapali { color: var(--yakut); }
+
+/* Mesaj akışı: sabit yükseklik + kendi içinde kaydırma.
+   Sayfa uzayıp giriş kutusunu ekrandan kaçırmasın. */
+.sohbet__akis {
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+  height: 340px;
+  overflow-y: auto;
+  padding: 10px;
+  background: var(--kaya-derin);
+  border: 1px solid var(--kaya-kenar);
+  border-radius: var(--radius-sm);
+
+  /* Yeni mesaj geldiğinde en altta kalmayı kolaylaştırır. */
+  scroll-behavior: smooth;
+}
+
+.sohbet__bos {
+  margin: auto;
+  font-size: 13px;
+  color: var(--metin-silik);
+}
+
+.mesaj {
+  max-width: 78%;
+  padding: 7px 11px;
+  background: var(--kaya);
+  border: 1px solid var(--kaya-kenar);
+  border-radius: var(--radius-sm);
+}
+
+/* Kendi mesajlarım sağda ve altın kenarlı — kimin yazdığı bir bakışta belli olsun. */
+.mesaj--benim {
+  align-self: flex-end;
+  border-color: rgba(245, 179, 1, 0.35);
+  background: rgba(245, 179, 1, 0.07);
+}
+
+.mesaj__ust {
+  display: flex;
+  align-items: baseline;
+  gap: 8px;
+  margin-bottom: 2px;
+}
+
+.mesaj__ad { font-size: 12px; font-weight: 700; color: var(--altin-parlak); }
+.mesaj--benim .mesaj__ad { color: var(--bakir); }
+.mesaj__saat { font-size: 10.5px; color: var(--metin-silik); }
+
+.mesaj__govde {
+  margin: 0;
+  font-size: 13.5px;
+  line-height: 1.45;
+
+  /* Uzun ve boşluksuz metin kutuyu taşırmasın. */
+  overflow-wrap: anywhere;
+}
+
+.sohbet__form {
+  display: flex;
+  gap: 8px;
+  margin-top: 12px;
+}
+
+.sohbet__giris { flex: 1; }
+.sohbet__buton { width: auto; padding: 11px 22px; white-space: nowrap; }
+
+.sohbet__not {
+  margin: 8px 0 0;
+  font-size: 11.5px;
+  color: var(--metin-silik);
+}

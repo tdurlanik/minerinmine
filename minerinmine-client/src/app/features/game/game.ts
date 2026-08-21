@@ -1,5 +1,5 @@
 import { HttpErrorResponse } from '@angular/common/http';
-import { Component, OnInit, computed, effect, inject, signal } from '@angular/core';
+import { Component, OnDestroy, OnInit, computed, effect, inject, signal } from '@angular/core';
 import { Router, RouterLink } from '@angular/router';
 import {
   ClickType,
@@ -10,6 +10,7 @@ import {
 } from '../../core/models/game.models';
 import { AuthService } from '../../core/services/auth.service';
 import { GameService } from '../../core/services/game.service';
+import { ChatService } from '../../core/services/chat.service';
 import { ToastService } from '../../core/services/toast.service';
 
 /**
@@ -24,10 +25,11 @@ import { ToastService } from '../../core/services/toast.service';
   templateUrl: './game.html',
   styleUrl: './game.css'
 })
-export class GameComponent implements OnInit {
+export class GameComponent implements OnInit, OnDestroy {
   protected readonly game = inject(GameService);
   protected readonly auth = inject(AuthService);
   protected readonly toast = inject(ToastService);
+  protected readonly chat = inject(ChatService);
   private readonly router = inject(Router);
 
   readonly yukleniyor = signal(true);
@@ -44,8 +46,8 @@ export class GameComponent implements OnInit {
   /**
    * SEKME DURUMU.
    *
-   * Deger = gosterilen tesisin facilityTypeId'si, 0 ise Dukkan sekmesi.
-   * (Kimlikler 1'den basladigi icin 0 "tesis degil" anlaminda guvenle kullanilir.)
+   * Deger = gosterilen tesisin facilityTypeId'si, 0 ise Dukkan, -1 ise Sohbet.
+   * (Kimlikler 1'den basladigi icin 0 ve -1 "tesis degil" anlaminda serbest.)
    *
    * NEDEN SEKME? Once butun tesisler ve dort dukkan bolumu alt alta
    * diziliyordu; iki tesiste bile ekran kaydirmadan hicbir sey gorunmuyordu.
@@ -63,6 +65,12 @@ export class GameComponent implements OnInit {
 
   /** Ust seritteki gezinme menusu acik mi? */
   readonly menuAcik = signal(false);
+
+  /** Sohbet kutusuna yazilan metin. */
+  readonly sohbetMetni = signal('');
+
+  /** Sohbet sekmesi degeri — sablonda sabit sayi yazmamak icin. */
+  readonly SOHBET = -1;
 
   /**
    * Dukkan sekmesinde su an KAC sey satin alinabilir?
@@ -122,6 +130,17 @@ export class GameComponent implements OnInit {
 
   ngOnInit(): void {
     this.durumuYenile(true);
+  }
+
+  /**
+   * Oyun ekranindan cikilinca WebSocket baglantisini kapatiyoruz.
+   *
+   * Kapatmasaydik kullanici siralama/istatistik sayfalarina gectiginde
+   * baglanti acik kalir, sunucuda bosuna kaynak tutardi. Bilesen yok
+   * olurken temizlik yapmak, abonelik ve baglanti tutan her yerde kuraldir.
+   */
+  ngOnDestroy(): void {
+    void this.chat.kapat();
   }
 
   private durumuYenile(ilk = false): void {
@@ -273,6 +292,43 @@ export class GameComponent implements OnInit {
 
   sekmeSec(deger: number): void {
     this.aktifSekme.set(deger);
+
+    if (deger === this.SOHBET) {
+      // Baglanti SADECE sohbet sekmesi ilk acildiginda kuruluyor.
+      // Herkesi oyuna girer girmez baglamak, sohbeti hic acmayacak
+      // oyuncular icin bosuna acik bir WebSocket demek olurdu.
+      void this.chat.baglan();
+      this.chat.ekraniAc();
+    } else {
+      // Baska sekmeye gecildi: baglanti duruyor ama gelen mesajlar artik
+      // okunmamis sayiliyor ve sekme rozetinde birikiyor.
+      this.chat.ekraniKapat();
+    }
+  }
+
+  sohbetMetniDegisti(olay: Event): void {
+    this.sohbetMetni.set((olay.target as HTMLInputElement).value);
+  }
+
+  async sohbetGonder(): Promise<void> {
+    const metin = this.sohbetMetni();
+    if (!metin.trim()) {
+      return;
+    }
+
+    this.sohbetMetni.set('');
+    await this.chat.gonder(metin);
+  }
+
+  /** Mesaj bana mi ait? (arayuz kendi mesajlarimi farkli hizalar) */
+  benimMesajim(userId: number): boolean {
+    return this.auth.userId() === userId;
+  }
+
+  /** Sohbet saati: "14:32" */
+  mesajSaati(iso: string): string {
+    const d = new Date(iso.endsWith('Z') ? iso : iso + 'Z');
+    return d.toLocaleTimeString('tr-TR', { hour: '2-digit', minute: '2-digit' });
   }
 
   menuyuAcKapat(): void {

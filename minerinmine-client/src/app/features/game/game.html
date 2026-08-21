@@ -128,6 +128,17 @@
             <span class="sekme__rozet">{{ dukkanFirsati() }}</span>
           }
         </button>
+
+        <button type="button" role="tab" class="sekme"
+                [class.sekme--aktif]="aktifSekme() === SOHBET"
+                [attr.aria-selected]="aktifSekme() === SOHBET"
+                (click)="sekmeSec(SOHBET)">
+          <span class="sekme__ad">💬 Sohbet</span>
+          <!-- Sekme kapalıyken gelen mesajlar burada birikir. -->
+          @if (chat.okunmamis() > 0 && aktifSekme() !== SOHBET) {
+            <span class="sekme__rozet">{{ chat.okunmamis() }}</span>
+          }
+        </button>
       </nav>
 
       <!-- ======================= TESİS SEKMESİ ======================= -->
@@ -272,6 +283,57 @@
             }
 
           </div>
+        </section>
+      }
+
+      <!-- ======================= SOHBET SEKMESİ =======================
+           Mesajlar iki ayrı kanaldan geliyor: geçmiş sıradan bir HTTP
+           isteğiyle, yeni mesajlar SignalR (WebSocket) ile. -->
+      @if (aktifSekme() === SOHBET) {
+        <section class="sohbet" role="tabpanel">
+
+          <div class="sohbet__ust">
+            <h2 class="sohbet__baslik">💬 Maden Sohbeti</h2>
+            <span class="sohbet__durum" [class]="'sohbet__durum--' + chat.durum()">
+              @switch (chat.durum()) {
+                @case ('bagli') { ● bağlı }
+                @case ('baglaniyor') { ● bağlanıyor… }
+                @default { ● bağlantı yok }
+              }
+            </span>
+          </div>
+
+          <div class="sohbet__akis">
+            @if (chat.mesajlar().length === 0) {
+              <p class="sohbet__bos">Henüz mesaj yok. İlk yazan sen ol.</p>
+            }
+
+            @for (m of chat.mesajlar(); track m.id) {
+              <div class="mesaj" [class.mesaj--benim]="benimMesajim(m.userId)">
+                <div class="mesaj__ust">
+                  <span class="mesaj__ad">{{ m.username }}</span>
+                  <span class="mesaj__saat">{{ mesajSaati(m.createdAt) }}</span>
+                </div>
+                <p class="mesaj__govde">{{ m.body }}</p>
+              </div>
+            }
+          </div>
+
+          <form class="sohbet__form" (submit)="$event.preventDefault(); sohbetGonder()">
+            <input class="mim-input sohbet__giris" type="text" maxlength="300"
+                   placeholder="Mesajını yaz…" [value]="sohbetMetni()"
+                   [disabled]="!chat.bagliMi()"
+                   (input)="sohbetMetniDegisti($event)" />
+            <button type="submit" class="mim-buton sohbet__buton"
+                    [disabled]="!chat.bagliMi() || !sohbetMetni().trim()">
+              Gönder
+            </button>
+          </form>
+
+          <p class="sohbet__not">
+            Mesajlar herkese açıktır ve kayıt altına alınır.
+            Çok hızlı yazarsan sunucu seni kısa süre bekletir.
+          </p>
         </section>
       }
 
